@@ -30,11 +30,11 @@
 - 2GB+ 内存
 - ChmlFrp 账户和Token
 
-### 🚀 Docker一键部署
+### 一键部署
 
 ```bash
 # 克隆项目
-git clone https://github.com/linluo-dev/chmlfrp-docker.git
+git clone https://github.com/your-username/chmlfrp-docker.git
 cd chmlfrp-docker
 
 # 启动服务
@@ -44,161 +44,12 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### 🏗️ 宝塔面板部署指南
-
-适用于纯净的Linux服务器 + 宝塔面板环境
-
-#### 第一步：安装宝塔面板
-
-```bash
-# CentOS/RHEL 安装命令
-yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
-
-# Ubuntu/Debian 安装命令
-wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
-```
-
-#### 第二步：安装Docker环境
-
-1. 登录宝塔面板：`http://你的服务器IP:8888`
-2. 进入 **软件商店** → **运行环境**
-3. 找到并安装 **Docker管理器**
-4. 安装完成后，在 **Docker管理器** 中启动Docker服务
-
-或者通过SSH命令安装：
-
-```bash
-# 安装Docker
-curl -fsSL https://get.docker.com | bash
-
-# 安装Docker Compose
-curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-
-# 启动Docker服务
-systemctl start docker
-systemctl enable docker
-```
-
-#### 第三步：部署ChmlFrp管理面板
-
-1. **创建项目目录**
-   ```bash
-   cd /www/wwwroot
-   git clone https://github.com/linluo-dev/chmlfrp-docker.git
-   cd chmlfrp-docker
-   ```
-
-2. **配置防火墙端口**
-   - 在宝塔面板 → **安全** → **防火墙** 中开放端口：
-     - `80` - 前端访问端口
-     - `3001` - 后端API端口
-
-3. **启动服务**
-   ```bash
-   # 构建并启动
-   docker-compose up -d --build
-   
-   # 查看状态
-   docker-compose ps
-   
-   # 查看日志
-   docker-compose logs -f
-   ```
-
-4. **配置Nginx反向代理（可选）**
-   
-   在宝塔面板中创建网站：
-   - 域名：`你的域名.com`
-   - 根目录：`/www/wwwroot/chmlfrp-docker`
-   
-   在 **网站设置** → **反向代理** 中添加：
-   ```
-   代理名称：ChmlFrp管理面板
-   目标URL：http://127.0.0.1:80
-   ```
-
-#### 第四步：配置SSL证书（推荐）
-
-1. 在宝塔面板 → **网站** → **你的网站** → **SSL**
-2. 选择 **Let's Encrypt** 免费证书
-3. 勾选强制HTTPS
-
 ### 访问面板
 
-- **直接访问**: http://你的服务器IP
-- **域名访问**: https://你的域名.com
-- **后端API**: http://你的服务器IP:3001
+- **管理面板**: http://localhost:8888
+- **后端API**: http://localhost:3001
 
-## 🛠️ 宝塔环境故障排除
-
-### 常见问题
-
-#### 1. Docker启动失败
-```bash
-# 检查Docker状态
-systemctl status docker
-
-# 重启Docker服务
-systemctl restart docker
-
-# 查看Docker版本
-docker --version
-```
-
-#### 2. 端口占用问题
-```bash
-# 检查端口占用
-netstat -tulpn | grep :80
-netstat -tulpn | grep :3001
-
-# 修改端口配置
-# 编辑 docker-compose.yml 修改端口映射
-```
-
-#### 3. 权限问题
-```bash
-# 添加用户到docker组
-usermod -aG docker www-data
-
-# 修改项目目录权限
-chown -R www-data:www-data /www/wwwroot/chmlfrp-docker
-chmod -R 755 /www/wwwroot/chmlfrp-docker
-```
-
-#### 4. 内存不足
-```bash
-# 检查内存使用
-free -h
-
-# 检查Docker容器资源占用
-docker stats
-```
-
-### 更新项目
-
-```bash
-cd /www/wwwroot/chmlfrp-docker
-
-# 停止服务
-docker-compose down
-
-# 拉取最新代码
-git pull origin main
-
-# 重新构建并启动
-docker-compose up -d --build
-```
-
-### 备份和恢复
-
-```bash
-# 备份配置和数据
-tar -czf chmlfrp-backup-$(date +%Y%m%d).tar.gz /www/wwwroot/chmlfrp-docker
-
-# 恢复备份
-tar -xzf chmlfrp-backup-20250901.tar.gz -C /www/wwwroot/
-```
+默认会自动打开浏览器访问管理面板。
 
 ## 🛠️ 功能特性
 
@@ -305,7 +156,7 @@ tar -xzf chmlfrp-backup-20250901.tar.gz -C /www/wwwroot/
 CHMLFRP_API_BASE=http://cf-v1.uapis.cn
 
 # 端口配置
-FRONTEND_PORT=80
+FRONTEND_PORT=8888
 BACKEND_PORT=3001
 
 # 日志级别
@@ -322,7 +173,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-8888}:80"
     depends_on:
       - backend
 

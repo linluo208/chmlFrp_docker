@@ -31,7 +31,7 @@ cd chmlfrp-docker
 docker-compose up -d
 
 # 访问面板
-open http://localhost
+open http://localhost:8888
 ```
 
 ## 📸 界面预览

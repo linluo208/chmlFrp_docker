@@ -16,6 +16,7 @@ class FrpManager {
         this.activeTunnels = new Map(); // tunnelId -> { process, config }
         this.frpBinaryPath = '/app/frpc';
         this.configDir = '/app/configs';
+        this.stateFile = '/app/tunnel-state.json'; // 隧道状态持久化文件
         this.autoReconnectEnabled = true; // 启用自动重连
         this.reconnectInterval = 5000; // 重连间隔5秒
         this.maxReconnectAttempts = 10; // 最大重连尝试次数
@@ -28,8 +29,104 @@ class FrpManager {
             fs.mkdirSync(this.configDir, { recursive: true });
         }
         
+        // 加载并恢复之前的隧道状态
+        this.loadTunnelState();
+        
         // 启动隧道监控
         this.startTunnelMonitoring();
+    }
+
+    // 保存隧道状态到文件
+    saveTunnelState() {
+        try {
+            const stateData = {
+                timestamp: new Date().toISOString(),
+                tunnels: []
+            };
+
+            // 收集当前活跃隧道的状态信息
+            for (const [tunnelId, tunnelInfo] of this.activeTunnels) {
+                if (tunnelInfo.process && !tunnelInfo.process.killed) {
+                    stateData.tunnels.push({
+                        id: tunnelId,
+                        config: tunnelInfo.config,
+                        userToken: tunnelInfo.userToken,
+                        startTime: tunnelInfo.startTime || new Date().toISOString()
+                    });
+                }
+            }
+
+            fs.writeFileSync(this.stateFile, JSON.stringify(stateData, null, 2), 'utf8');
+            console.log(`隧道状态已保存: ${stateData.tunnels.length} 个活跃隧道`);
+        } catch (error) {
+            console.error('保存隧道状态失败:', error);
+        }
+    }
+
+    // 从文件加载隧道状态
+    loadTunnelState() {
+        try {
+            if (!fs.existsSync(this.stateFile)) {
+                console.log('未找到隧道状态文件，跳过恢复');
+                return;
+            }
+
+            const stateData = JSON.parse(fs.readFileSync(this.stateFile, 'utf8'));
+            console.log(`发现 ${stateData.tunnels?.length || 0} 个待恢复的隧道`);
+
+            if (stateData.tunnels && stateData.tunnels.length > 0) {
+                // 延迟3秒后开始恢复隧道，确保系统初始化完成
+                setTimeout(() => {
+                    this.recoverTunnels(stateData.tunnels);
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('加载隧道状态失败:', error);
+        }
+    }
+
+    // 恢复隧道
+    async recoverTunnels(tunnels) {
+        console.log('开始自动恢复隧道...');
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const tunnelState of tunnels) {
+            try {
+                console.log(`正在恢复隧道: ${tunnelState.config?.name || tunnelState.id}`);
+                
+                // 使用保存的配置和token恢复隧道
+                const result = await this.startSingleTunnel(tunnelState.config, tunnelState.userToken);
+                
+                if (result.success) {
+                    successCount++;
+                    console.log(`✅ 隧道 ${tunnelState.config?.name} 恢复成功`);
+                } else {
+                    failCount++;
+                    console.log(`❌ 隧道 ${tunnelState.config?.name} 恢复失败: ${result.message}`);
+                }
+                
+                // 每个隧道恢复后等待1秒，避免并发问题
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                failCount++;
+                console.error(`恢复隧道失败 ${tunnelState.config?.name}:`, error);
+            }
+        }
+
+        console.log(`隧道恢复完成: 成功 ${successCount} 个，失败 ${failCount} 个`);
+    }
+
+    // 清理隧道状态文件
+    clearTunnelState() {
+        try {
+            if (fs.existsSync(this.stateFile)) {
+                fs.unlinkSync(this.stateFile);
+                console.log('隧道状态文件已清理');
+            }
+        } catch (error) {
+            console.error('清理隧道状态文件失败:', error);
+        }
     }
 
     // 生成frp配置文件 (使用YAML格式避免警告)
@@ -390,12 +487,17 @@ use_compression = true`;
                             this.activeTunnels.set(tunnel.id, {
                                 process: frpProcess,
                                 tunnel: tunnel,
+                                config: tunnel, // 保存完整配置用于恢复
                                 configPath: configPath,
                                 startTime: new Date(),
                                 userToken: userToken, // 保存用户token用于重连
                                 reconnectAttempts: 0
                             });
                             console.log(`隧道 ${tunnel.name} 启动成功`);
+                            
+                            // 保存隧道状态
+                            this.saveTunnelState();
+                            
                             resolve({ success: true, message: `隧道 ${tunnel.name} 启动成功` });
                         }
                     }
@@ -419,6 +521,7 @@ use_compression = true`;
                 frpProcess.on('close', (code) => {
                     console.log(`隧道 ${tunnel.name} 进程退出，代码: ${code}`);
                     this.activeTunnels.delete(tunnel.id);
+                    this.saveTunnelState(); // 保存状态
                     
                     if (!startupSuccess && code !== 0) {
                         reject(new Error(`隧道启动失败，退出代码: ${code}${startupError ? ', 错误: ' + startupError : ''}`));
@@ -428,6 +531,7 @@ use_compression = true`;
                 frpProcess.on('error', (err) => {
                     console.error(`隧道 ${tunnel.name} 进程错误:`, err);
                     this.activeTunnels.delete(tunnel.id);
+                    this.saveTunnelState(); // 保存状态
                     reject(err);
                 });
 
@@ -439,11 +543,16 @@ use_compression = true`;
                             this.activeTunnels.set(tunnel.id, {
                                 process: frpProcess,
                                 tunnel: tunnel,
+                                config: tunnel, // 保存完整配置用于恢复
                                 configPath: configPath,
                                 startTime: new Date(),
                                 userToken: userToken, // 保存用户token用于重连
                                 reconnectAttempts: 0
                             });
+                            
+                            // 保存隧道状态
+                            this.saveTunnelState();
+                            
                             resolve({ success: true, message: `隧道 ${tunnel.name} 启动成功` });
                         } else {
                             reject(new Error(`隧道启动超时${startupError ? ': ' + startupError : ''}`));
@@ -484,6 +593,9 @@ use_compression = true`;
 
             // 从活跃列表中移除
             this.activeTunnels.delete(tunnelId);
+
+            // 保存隧道状态
+            this.saveTunnelState();
 
             return { success: true, message: '隧道已停止' };
 

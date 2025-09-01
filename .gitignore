@@ -1,62 +1,46 @@
-# 依赖文件
+# Dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# 生产构建
-build/
-dist/
+# Production builds
+frontend/build/
+backend/dist/
 
-# 环境变量
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# 日志文件
+# Docker
+.docker/
+
+# Logs
 logs/
 *.log
 
-# 运行时数据
-pids
+# Runtime data
+pids/
 *.pid
 *.seed
 *.pid.lock
 
-# 临时文件
-.tmp/
-.temp/
+# Coverage directory used by tools like istanbul
+coverage/
 
-# IDE 和编辑器
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# 系统文件
+# OS
 .DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
-
-# 备份文件
-backup/
-*.backup
-
-# FRP 配置和日志
-frpc.ini
-frps.ini
-frpc.log
-frps.log
-
-# 自定义配置
-configs/
-data/
-
-# 测试文件
-test-*.js
-*.test.json
+# Temporary files
+tmp/
+temp/

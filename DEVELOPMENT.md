@@ -533,7 +533,7 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 # 验证部署
 docker-compose ps
-curl http://localhost/api/health
+curl http://localhost:8888/api/health
 ```
 
 ### 多阶段构建优化
@@ -677,7 +677,7 @@ setInterval(() => {
 
 ```bash
 # 查看端口占用
-netstat -tulpn | grep :80
+netstat -tulpn | grep :8888
 lsof -i :3001
 
 # 修改端口配置

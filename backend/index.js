@@ -525,6 +525,91 @@ app.get('/api/frp/auto-reconnect', (req, res) => {
     }
 });
 
+// 手动恢复隧道状态
+app.post('/api/frp/recover-tunnels', async (req, res) => {
+    try {
+        console.log('手动触发隧道恢复');
+        await frpManager.loadTunnelState();
+        
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '隧道恢复任务已启动',
+            data: {
+                message: '正在后台恢复隧道，请稍后查看状态'
+            }
+        });
+    } catch (error) {
+        console.error('手动恢复隧道失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: `恢复隧道失败: ${error.message}`,
+            data: null
+        });
+    }
+});
+
+// 清理隧道状态
+app.post('/api/frp/clear-state', (req, res) => {
+    try {
+        frpManager.clearTunnelState();
+        
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '隧道状态已清理',
+            data: null
+        });
+    } catch (error) {
+        console.error('清理隧道状态失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: `清理隧道状态失败: ${error.message}`,
+            data: null
+        });
+    }
+});
+
+// 获取隧道恢复状态
+app.get('/api/frp/recovery-status', (req, res) => {
+    try {
+        const fs = require('fs');
+        const stateFile = '/app/tunnel-state.json';
+        
+        let recoveryInfo = {
+            hasState: false,
+            tunnelCount: 0,
+            lastSaved: null
+        };
+        
+        if (fs.existsSync(stateFile)) {
+            const stateData = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+            recoveryInfo = {
+                hasState: true,
+                tunnelCount: stateData.tunnels?.length || 0,
+                lastSaved: stateData.timestamp
+            };
+        }
+        
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '获取恢复状态成功',
+            data: recoveryInfo
+        });
+    } catch (error) {
+        console.error('获取恢复状态失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: `获取恢复状态失败: ${error.message}`,
+            data: null
+        });
+    }
+});
+
 // ========== 简化的隧道级FRP管理 ==========
 
 // 启动单个隧道的内网穿透

@@ -12,7 +12,7 @@ Write-Host $services
 # 2. 验证前端界面
 Write-Host "`n🌐 2. 验证前端界面" -ForegroundColor Yellow
 try {
-    $frontendResponse = Invoke-WebRequest -Uri "http://localhost" -Method Head -TimeoutSec 10
+    $frontendResponse = Invoke-WebRequest -Uri "http://localhost:8888" -Method Head -TimeoutSec 10
     Write-Host "✅ 前端界面正常 (状态码: $($frontendResponse.StatusCode))" -ForegroundColor Green
 } catch {
     Write-Host "❌ 前端界面异常: $($_.Exception.Message)" -ForegroundColor Red
@@ -85,14 +85,14 @@ Write-Host $stats
 # 8. 显示访问信息
 Write-Host "`n🎯 8. 访问信息" -ForegroundColor Yellow
 Write-Host "✨ 主要访问地址:" -ForegroundColor Cyan
-Write-Host "   🌐 管理界面:        http://localhost" -ForegroundColor White
+Write-Host "   🌐 管理界面:        http://localhost:8888" -ForegroundColor White
 Write-Host "   🔧 API接口:         http://localhost:3001" -ForegroundColor White
 Write-Host "   📊 FRP服务器控制台: http://localhost:7500" -ForegroundColor White
 Write-Host "   📋 API文档:         http://localhost:3001/api/health" -ForegroundColor White
 
 # 9. 快速功能测试建议
 Write-Host "`n🧪 9. 快速功能测试建议" -ForegroundColor Yellow
-Write-Host "1️⃣ 打开管理界面: http://localhost" -ForegroundColor White
+Write-Host "1️⃣ 打开管理界面: http://localhost:8888" -ForegroundColor White
 Write-Host "2️⃣ 使用 ChmlFrp 账户登录" -ForegroundColor White
 Write-Host "3️⃣ 进入'隧道管理'创建测试隧道" -ForegroundColor White
 Write-Host "4️⃣ 进入'内网穿透'启动FRP客户端" -ForegroundColor White

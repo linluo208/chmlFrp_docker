@@ -161,28 +161,6 @@ const Messages = () => {
           />
         )}
       </Card>
-
-      {/* 消息统计 */}
-      <Card title="消息统计" style={{ marginTop: '16px' }}>
-        <Space size="large">
-          <div>
-            <Text strong>总消息数：</Text>
-            <Text>{messages.length}</Text>
-          </div>
-          <div>
-            <Text strong>未读消息：</Text>
-            <Text style={{ color: '#ff4d4f' }}>{unreadCount}</Text>
-          </div>
-          <div>
-            <Text strong>系统消息：</Text>
-            <Text>{messages.filter(msg => msg.type === 'system').length}</Text>
-          </div>
-          <div>
-            <Text strong>隧道消息：</Text>
-            <Text>{messages.filter(msg => msg.type === 'tunnel').length}</Text>
-          </div>
-        </Space>
-      </Card>
     </div>
   );
 };

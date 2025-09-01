@@ -8,7 +8,7 @@ setlocal enabledelayedexpansion
 
 echo ==================================================
 echo   ChmlFrp Docker 可视化管理面板
-echo   版本: v1.0.0
+echo   Version: v1.0.0
 echo ==================================================
 
 :: 检查Docker是否安装
@@ -31,11 +31,11 @@ if errorlevel 1 (
 
 echo ✅ Docker 环境检查通过
 
-:: 检查端口80是否被占用
-netstat -an | findstr ":80 " >nul 2>&1
+:: 检查端口8888是否被占用
+netstat -an | findstr ":8888 " >nul 2>&1
 if not errorlevel 1 (
-    echo ⚠️  警告: 端口 80 已被占用
-    echo 请停止占用80端口的服务，或修改docker-compose.yml中的端口配置
+    echo ⚠️  警告: 端口 8888 已被占用
+    echo 请停止占用8888端口的服务，或修改docker-compose.yml中的端口配置
     set /p continue="是否继续? (y/N): "
     if /i not "!continue!"=="y" (
         exit /b 1
@@ -76,14 +76,14 @@ echo.
 echo ==================================================
 echo 🎉 ChmlFrp 管理面板部署完成!
 echo.
-echo 📍 访问地址: http://localhost
+echo 📍 访问地址: http://localhost:8888
 echo 🔧 管理命令:
 echo    查看日志: docker-compose logs
 echo    停止服务: docker-compose down
 echo    重启服务: docker-compose restart
 echo.
 echo 📚 使用说明:
-echo    1. 打开浏览器访问 http://localhost
+echo    1. 打开浏览器访问 http://localhost:8888
 echo    2. 使用您的ChmlFrp账户登录
 echo    3. 开始管理您的内网穿透隧道
 echo.
@@ -93,7 +93,7 @@ echo ==================================================
 :: 询问是否打开浏览器
 set /p openBrowser="是否打开浏览器? (y/N): "
 if /i "!openBrowser!"=="y" (
-    start http://localhost
+    start http://localhost:8888
 )
 
 pause

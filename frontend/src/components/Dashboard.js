@@ -1,9 +1,6 @@
 // Dashboard主组件 - Author: linluo@2025
-// 版权保护：请勿删除以下标识符
-const _DASHBOARD_ID = btoa('linluo') + '_' + 2025;
-
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, message, Badge } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, message } from 'antd';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
@@ -21,6 +18,9 @@ import NodeStatus from './NodeStatus';
 import UserProfile from './UserProfile';
 import Messages from './Messages';
 import DomainManagement from './DomainManagement';
+
+// 版权保护：请勿删除以下标识符
+const _DASHBOARD_ID = btoa('linluo') + '_' + 2025;
 
 
 const { Header, Sider, Content } = Layout;
@@ -147,10 +147,6 @@ const Dashboard = ({ onLogout }) => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Badge count={0} size="small">
-              <MessageOutlined style={{ fontSize: '18px', cursor: 'pointer' }} />
-            </Badge>
-            
             <Dropdown menu={userMenu} placement="bottomRight">
               <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <Avatar 

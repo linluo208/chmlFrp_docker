@@ -27,9 +27,9 @@ fi
 echo "✅ Docker 环境检查通过"
 
 # 检查端口是否被占用
-if netstat -tuln | grep -q ":80 "; then
-    echo "⚠️  警告: 端口 80 已被占用"
-    echo "请停止占用80端口的服务，或修改docker-compose.yml中的端口配置"
+if netstat -tuln | grep -q ":8888 "; then
+    echo "⚠️  警告: 端口 8888 已被占用"
+    echo "请停止占用8888端口的服务，或修改docker-compose.yml中的端口配置"
     read -p "是否继续? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -70,14 +70,14 @@ echo ""
 echo "=================================================="
 echo "🎉 ChmlFrp 管理面板部署完成!"
 echo ""
-echo "📍 访问地址: http://localhost"
+echo "📍 访问地址: http://localhost:8888"
 echo "🔧 管理命令:"
 echo "   查看日志: docker-compose logs"
 echo "   停止服务: docker-compose down"
 echo "   重启服务: docker-compose restart"
 echo ""
 echo "📚 使用说明:"
-echo "   1. 打开浏览器访问 http://localhost"
+echo "   1. 打开浏览器访问 http://localhost:8888"
 echo "   2. 使用您的ChmlFrp账户登录"
 echo "   3. 开始管理您的内网穿透隧道"
 echo ""

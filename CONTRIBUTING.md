@@ -92,6 +92,9 @@ cd frontend && npm install && npm start
 
 # 容器开发
 docker-compose up -d --build
+
+# 访问应用
+open http://localhost:8888
 ```
 
 ## 🧪 测试
