@@ -1,0 +1,78 @@
+[1mdiff --git a/DOCKER.md b/DOCKER.md[m
+[1mindex 4abf1ab..1adede6 100644[m
+[1m--- a/DOCKER.md[m
+[1m+++ b/DOCKER.md[m
+[36m@@ -2,8 +2,9 @@[m
+ [m
+ ## 🐳 Docker Hub 镜像[m
+ [m
+[31m-[![Docker Pulls](https://img.shields.io/docker/pulls/linluo208/chmlfrp-panel)](https://hub.docker.com/r/linluo208/chmlfrp-panel)[m
+[31m-[![Docker Image Size](https://img.shields.io/docker/image-size/linluo208/chmlfrp-panel/latest)](https://hub.docker.com/r/linluo208/chmlfrp-panel)[m
+[32m+[m[32m[![Docker Pulls](https://img.shields.io/docker/pulls/2084738471/chmlfrp-panel)](https://hub.docker.com/r/2084738471/chmlfrp-panel)[m
+[32m+[m[32m[![Docker Image Size](https://img.shields.io/docker/image-size/2084738471/chmlfrp-panel/latest)](https://hub.docker.com/r/2084738471/chmlfrp-panel)[m
+[32m+[m[32m[![GitHub Release](https://img.shields.io/github/v/release/linluo208/chmlFrp_docker)](https://github.com/linluo208/chmlFrp_docker/releases)[m
+ [m
+ ## 🚀 快速开始[m
+ [m
+[36m@@ -29,10 +30,32 @@[m [mdocker run -d \[m
+   -v chmlfrp-logs:/app/logs \[m
+   -e NODE_ENV=production \[m
+   -e TZ=Asia/Shanghai \[m
+[31m-  linluo208/chmlfrp-panel:latest[m
+[32m+[m[32m  2084738471/chmlfrp-panel:latest[m
+ ```[m
+ [m
+[31m-### 方法三：Docker Compose[m
+[32m+[m[32m### 方法三：离线部署（网络受限环境）[m
+[32m+[m
+[32m+[m[32m#### 选项1：下载GitHub Release[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# 1. 下载镜像文件[m
+[32m+[m[32mwget https://github.com/linluo208/chmlFrp_docker/releases/latest/download/chmlfrp-panel.tar[m
+[32m+[m
+[32m+[m[32m# 2. 导入镜像[m
+[32m+[m[32mdocker load -i chmlfrp-panel.tar[m
+[32m+[m
+[32m+[m[32m# 3. 运行容器[m
+[32m+[m[32mdocker run -d --name chmlfrp-panel -p 8888:80 2084738471/chmlfrp-panel:latest[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m#### 选项2：使用导入脚本[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# 下载并运行脚本[m
+[32m+[m[32mwget https://raw.githubusercontent.com/linluo208/chmlFrp_docker/master/export-import-image.sh[m
+[32m+[m[32mchmod +x export-import-image.sh[m
+[32m+[m[32m./export-import-image.sh[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 方法四：Docker Compose[m
+ [m
+ 1. **下载配置文件**：[m
+ ```bash[m
+[36m@@ -49,7 +72,7 @@[m [mdocker-compose up -d[m
+ [m
+ | 信息 | 值 |[m
+ |------|-----|[m
+[31m-| **镜像名称** | `linluo208/chmlfrp-panel` |[m
+[32m+[m[32m| **镜像名称** | `2084738471/chmlfrp-panel` |[m
+ | **最新版本** | `latest` |[m
+ | **基础镜像** | `nginx:alpine` + `node:18-alpine` |[m
+ | **镜像大小** | ~200MB |[m
+[36m@@ -136,7 +159,7 @@[m [mdocker run --rm -v chmlfrp-data:/data -v $(pwd):/backup alpine tar xzf /backup/c[m
+ ### 1. 通过Docker管理器[m
+ [m
+ 1. **安装Docker管理器**（宝塔应用商店）[m
+[31m-2. **拉取镜像**：`linluo208/chmlfrp-panel:latest`[m
+[32m+[m[32m2. **拉取镜像**：`2084738471/chmlfrp-panel:latest`[m
+ 3. **创建容器**：[m
+    - 容器名：`chmlfrp-panel`[m
+    - 端口映射：`8888:80, 3001:3001, 7000:7000, 7400:7400, 7500:7500`[m
+[36m@@ -167,7 +190,7 @@[m [mcurl -fsSL https://raw.githubusercontent.com/linluo208/chmlFrp_docker/master/dep[m
+ [m
+ - **GitHub Issues**：[https://github.com/linluo208/chmlFrp_docker/issues](https://github.com/linluo208/chmlFrp_docker/issues)[m
+ - **项目文档**：[https://github.com/linluo208/chmlFrp_docker](https://github.com/linluo208/chmlFrp_docker)[m
+[31m-- **Docker Hub**：[https://hub.docker.com/r/linluo208/chmlfrp-panel](https://hub.docker.com/r/linluo208/chmlfrp-panel)[m
+[32m+[m[32m- **Docker Hub**：[https://hub.docker.com/r/2084738471/chmlfrp-panel](https://hub.docker.com/r/2084738471/chmlfrp-panel)[m
+ [m
+ ---[m
+ [m

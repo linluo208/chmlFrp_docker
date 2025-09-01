@@ -1,0 +1,17 @@
+ChmlFrp Docker 镜像导入说明 
+================================ 
+ 
+1. 上传文件到服务器 
+   将 chmlfrp-panel.tar 上传到服务器的 /root/ 目录 
+ 
+2. 上传脚本到服务器 
+   将 export-import-image.sh 也上传到服务器 
+ 
+3. 在服务器执行导入 
+   chmod +x export-import-image.sh 
+   ./export-import-image.sh import 
+ 
+4. 运行容器 
+   ./export-import-image.sh run 
+ 
+文件大小: 61 MB 

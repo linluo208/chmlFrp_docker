@@ -59,6 +59,8 @@ COPY --from=frontend-build /app/build /usr/share/nginx/html
 
 # 复制后端应用
 COPY --from=backend-build /app /app/backend
+COPY --from=backend-build /usr/local/bin/frpc /app/frpc
+COPY --from=backend-build /usr/local/bin/frps /app/frps
 COPY --from=backend-build /usr/local/bin/frpc /usr/local/bin/
 COPY --from=backend-build /usr/local/bin/frps /usr/local/bin/
 
@@ -81,6 +83,7 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '# 确保目录权限' >> /usr/local/bin/start.sh && \
     echo 'chown -R nginx:nginx /usr/share/nginx/html' >> /usr/local/bin/start.sh && \
     echo 'chmod -R 755 /app' >> /usr/local/bin/start.sh && \
+    echo 'chmod +x /app/frpc /app/frps' >> /usr/local/bin/start.sh && \
     echo '' >> /usr/local/bin/start.sh && \
     echo '# 启动后端服务' >> /usr/local/bin/start.sh && \
     echo 'cd /app/backend' >> /usr/local/bin/start.sh && \
