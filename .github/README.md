@@ -2,14 +2,18 @@
 
 <div align="center">
 
-![License](https://img.shields.io/github/license/your-username/chmlfrp-docker)
-![Docker](https://img.shields.io/badge/Docker-Supported-blue)
-![React](https://img.shields.io/badge/React-18+-green)
-![Node.js](https://img.shields.io/badge/Node.js-18+-green)
+[![License](https://img.shields.io/github/license/linluo208/chmlFrp_docker)](https://github.com/linluo208/chmlFrp_docker/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/linluo208/chmlFrp_docker?style=social)](https://github.com/linluo208/chmlFrp_docker/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/linluo208/chmlFrp_docker?style=social)](https://github.com/linluo208/chmlFrp_docker/network/members)
+
+[![Docker](https://img.shields.io/badge/Docker-Supported-blue)](https://www.docker.com/)
+[![React](https://img.shields.io/badge/React-18+-green)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
+[![ChmlFrp](https://img.shields.io/badge/ChmlFrp-Compatible-orange)](https://www.chmlfrp.cn/)
 
 **🚀 功能完整的 ChmlFrp 内网穿透 Docker 管理面板**
 
-[快速开始](#快速开始) • [功能特性](#功能特性) • [在线演示](#在线演示) • [文档](#文档) • [贡献](#贡献)
+[🚀 快速开始](#-快速开始) • [🎯 功能特性](#-功能特性) • [📸 界面预览](#-界面预览) • [📚 文档](#-文档) • [🤝 贡献](#-贡献)
 
 </div>
 
@@ -37,8 +41,8 @@ open http://localhost:8888
 ## 📸 界面预览
 
 <div align="center">
-  <img src="screenshots/dashboard.png" alt="仪表盘" width="45%">
-  <img src="screenshots/tunnels.png" alt="隧道管理" width="45%">
+  <img src="https://wp-cdn.4ce.cn/v2/MjP2fFF.png" alt="仪表盘" width="45%">
+  <img src="https://wp-cdn.4ce.cn/v2/rB8Npf5.png" alt="隧道管理" width="45%">
 </div>
 
 ## 🎯 功能特性
