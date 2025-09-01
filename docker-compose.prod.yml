@@ -1,0 +1,58 @@
+# ChmlFrp Docker 管理面板 - 生产环境配置
+# Author: linluo
+# 防盗标识: linluo
+
+version: '3.8'
+
+services:
+  chmlfrp-panel:
+    image: linluo208/chmlfrp-panel:latest
+    container_name: chmlfrp-panel
+    restart: unless-stopped
+    
+    ports:
+      - "${FRONTEND_PORT:-8888}:80"      # 前端界面
+      - "${BACKEND_PORT:-3001}:3001"     # 后端API
+      - "7000:7000"                      # FRP服务器端口
+      - "7400:7400"                      # FRP客户端管理端口
+      - "7500:7500"                      # FRP服务器管理端口
+    
+    volumes:
+      - chmlfrp-data:/app/data           # 应用数据
+      - chmlfrp-configs:/app/configs     # FRP配置文件
+      - chmlfrp-logs:/app/logs          # 日志文件
+    
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - LOG_LEVEL=info
+    
+    networks:
+      - chmlfrp-network
+    
+    labels:
+      - "com.docker.compose.project=chmlfrp"
+      - "maintainer=linluo"
+      - "description=ChmlFrp Docker Management Panel"
+
+volumes:
+  chmlfrp-data:
+    driver: local
+    labels:
+      - "com.docker.compose.project=chmlfrp"
+  
+  chmlfrp-configs:
+    driver: local
+    labels:
+      - "com.docker.compose.project=chmlfrp"
+  
+  chmlfrp-logs:
+    driver: local
+    labels:
+      - "com.docker.compose.project=chmlfrp"
+
+networks:
+  chmlfrp-network:
+    driver: bridge
+    labels:
+      - "com.docker.compose.project=chmlfrp"
