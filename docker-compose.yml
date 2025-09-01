@@ -1,0 +1,38 @@
+# ChmlFrp Docker管理面板
+# Author: linluo
+# 防盗标识: linluo
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - frp-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"    # API服务
+      - "7000:7000"    # FRP服务器端口
+      - "7400:7400"    # FRP客户端管理端口
+      - "7500:7500"    # FRP服务器管理端口
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - CHMLFRP_API_BASE=http://cf-v2.uapis.cn
+    networks:
+      - frp-network
+
+networks:
+  frp-network:
+    driver: bridge
+
+volumes:
+  frp-data:
