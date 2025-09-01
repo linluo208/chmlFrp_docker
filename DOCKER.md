@@ -2,8 +2,9 @@
 
 ## 🐳 Docker Hub 镜像
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/linluo208/chmlfrp-panel)](https://hub.docker.com/r/linluo208/chmlfrp-panel)
-[![Docker Image Size](https://img.shields.io/docker/image-size/linluo208/chmlfrp-panel/latest)](https://hub.docker.com/r/linluo208/chmlfrp-panel)
+[![Docker Pulls](https://img.shields.io/docker/pulls/2084738471/chmlfrp-panel)](https://hub.docker.com/r/2084738471/chmlfrp-panel)
+[![Docker Image Size](https://img.shields.io/docker/image-size/2084738471/chmlfrp-panel/latest)](https://hub.docker.com/r/2084738471/chmlfrp-panel)
+[![GitHub Release](https://img.shields.io/github/v/release/linluo208/chmlFrp_docker)](https://github.com/linluo208/chmlFrp_docker/releases)
 
 ## 🚀 快速开始
 
@@ -29,10 +30,32 @@ docker run -d \
   -v chmlfrp-logs:/app/logs \
   -e NODE_ENV=production \
   -e TZ=Asia/Shanghai \
-  linluo208/chmlfrp-panel:latest
+  2084738471/chmlfrp-panel:latest
 ```
 
-### 方法三：Docker Compose
+### 方法三：离线部署（网络受限环境）
+
+#### 选项1：下载GitHub Release
+```bash
+# 1. 下载镜像文件
+wget https://github.com/linluo208/chmlFrp_docker/releases/latest/download/chmlfrp-panel.tar
+
+# 2. 导入镜像
+docker load -i chmlfrp-panel.tar
+
+# 3. 运行容器
+docker run -d --name chmlfrp-panel -p 8888:80 2084738471/chmlfrp-panel:latest
+```
+
+#### 选项2：使用导入脚本
+```bash
+# 下载并运行脚本
+wget https://raw.githubusercontent.com/linluo208/chmlFrp_docker/master/export-import-image.sh
+chmod +x export-import-image.sh
+./export-import-image.sh
+```
+
+### 方法四：Docker Compose
 
 1. **下载配置文件**：
 ```bash
@@ -49,7 +72,7 @@ docker-compose up -d
 
 | 信息 | 值 |
 |------|-----|
-| **镜像名称** | `linluo208/chmlfrp-panel` |
+| **镜像名称** | `2084738471/chmlfrp-panel` |
 | **最新版本** | `latest` |
 | **基础镜像** | `nginx:alpine` + `node:18-alpine` |
 | **镜像大小** | ~200MB |
@@ -136,7 +159,7 @@ docker run --rm -v chmlfrp-data:/data -v $(pwd):/backup alpine tar xzf /backup/c
 ### 1. 通过Docker管理器
 
 1. **安装Docker管理器**（宝塔应用商店）
-2. **拉取镜像**：`linluo208/chmlfrp-panel:latest`
+2. **拉取镜像**：`2084738471/chmlfrp-panel:latest`
 3. **创建容器**：
    - 容器名：`chmlfrp-panel`
    - 端口映射：`8888:80, 3001:3001, 7000:7000, 7400:7400, 7500:7500`
@@ -167,7 +190,7 @@ curl -fsSL https://raw.githubusercontent.com/linluo208/chmlFrp_docker/master/dep
 
 - **GitHub Issues**：[https://github.com/linluo208/chmlFrp_docker/issues](https://github.com/linluo208/chmlFrp_docker/issues)
 - **项目文档**：[https://github.com/linluo208/chmlFrp_docker](https://github.com/linluo208/chmlFrp_docker)
-- **Docker Hub**：[https://hub.docker.com/r/linluo208/chmlfrp-panel](https://hub.docker.com/r/linluo208/chmlfrp-panel)
+- **Docker Hub**：[https://hub.docker.com/r/2084738471/chmlfrp-panel](https://hub.docker.com/r/2084738471/chmlfrp-panel)
 
 ---
 
