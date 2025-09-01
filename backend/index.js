@@ -48,7 +48,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // ChmlFrp API基础URL（可以通过环境变量配置）
-const CHMLFRP_API_BASE = process.env.CHMLFRP_API_BASE || 'http://cf-v1.uapis.cn';
+const CHMLFRP_API_BASE = process.env.CHMLFRP_API_BASE || 'http://cf-v2.uapis.cn';
 
 // 通用API代理函数
 async function proxyToChmlFrp(req, res, endpoint, method = 'GET', retryCount = 0) {
