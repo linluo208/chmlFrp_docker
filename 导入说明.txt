@@ -14,4 +14,4 @@ ChmlFrp Docker 镜像导入说明
 4. 运行容器 
    ./export-import-image.sh run 
  
-文件大小: 61 MB 
+文件大小: 73 MB 
