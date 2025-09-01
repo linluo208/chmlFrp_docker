@@ -49,7 +49,7 @@ LABEL version="1.0.0"
 LABEL author="linluo"
 
 # 安装Node.js和必要工具
-RUN apk add --no-cache nodejs npm curl wget supervisor
+RUN apk add --no-cache nodejs npm curl wget
 
 # 创建应用目录
 RUN mkdir -p /app/backend /app/data /app/configs /app/logs
@@ -65,49 +65,30 @@ COPY --from=backend-build /usr/local/bin/frps /usr/local/bin/
 # 复制nginx配置
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# 创建supervisor配置
-RUN cat > /etc/supervisor/conf.d/chmlfrp.conf << 'EOF'
-[supervisord]
-nodaemon=true
-user=root
-
-[program:backend]
-command=node index.js
-directory=/app/backend
-autostart=true
-autorestart=true
-stderr_logfile=/app/logs/backend.err.log
-stdout_logfile=/app/logs/backend.out.log
-
-[program:nginx]
-command=nginx -g "daemon off;"
-autostart=true
-autorestart=true
-stderr_logfile=/app/logs/nginx.err.log
-stdout_logfile=/app/logs/nginx.out.log
-EOF
+# 删除supervisor配置，使用简单启动脚本
 
 # 创建启动脚本
-RUN cat > /start.sh << 'EOF'
-#!/bin/sh
-# ChmlFrp Docker 管理面板启动脚本
-# Author: linluo
-
-echo "🚀 启动 ChmlFrp 管理面板..."
-echo "📍 前端地址: http://localhost"
-echo "🔧 后端API: http://localhost:3001"
-echo "👨‍💻 作者: linluo"
-echo "🔒 防盗标识: linluo"
-
-# 确保目录权限
-chown -R nginx:nginx /usr/share/nginx/html
-chmod -R 755 /app
-
-# 启动supervisor管理所有进程
-exec /usr/bin/supervisord -c /etc/supervisor/conf.d/chmlfrp.conf
-EOF
-
-RUN chmod +x /start.sh
+RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
+    echo '# ChmlFrp Docker 管理面板启动脚本' >> /usr/local/bin/start.sh && \
+    echo '# Author: linluo' >> /usr/local/bin/start.sh && \
+    echo '' >> /usr/local/bin/start.sh && \
+    echo 'echo "🚀 启动 ChmlFrp 管理面板..."' >> /usr/local/bin/start.sh && \
+    echo 'echo "📍 前端地址: http://localhost"' >> /usr/local/bin/start.sh && \
+    echo 'echo "🔧 后端API: http://localhost:3001"' >> /usr/local/bin/start.sh && \
+    echo 'echo "👨‍💻 作者: linluo"' >> /usr/local/bin/start.sh && \
+    echo 'echo "🔒 防盗标识: linluo"' >> /usr/local/bin/start.sh && \
+    echo '' >> /usr/local/bin/start.sh && \
+    echo '# 确保目录权限' >> /usr/local/bin/start.sh && \
+    echo 'chown -R nginx:nginx /usr/share/nginx/html' >> /usr/local/bin/start.sh && \
+    echo 'chmod -R 755 /app' >> /usr/local/bin/start.sh && \
+    echo '' >> /usr/local/bin/start.sh && \
+    echo '# 启动后端服务' >> /usr/local/bin/start.sh && \
+    echo 'cd /app/backend' >> /usr/local/bin/start.sh && \
+    echo 'node index.js &' >> /usr/local/bin/start.sh && \
+    echo '' >> /usr/local/bin/start.sh && \
+    echo '# 启动nginx' >> /usr/local/bin/start.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /usr/local/bin/start.sh && \
+    chmod +x /usr/local/bin/start.sh
 
 # 暴露端口
 EXPOSE 80 3001 7000 7400 7500
@@ -120,4 +101,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost/api/health || exit 1
 
 # 启动命令
-CMD ["/start.sh"]
+ENTRYPOINT ["/usr/local/bin/start.sh"]
