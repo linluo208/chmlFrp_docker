@@ -73,10 +73,10 @@ open http://localhost:8888
 
 ## 📚 文档
 
-- [📖 用户指南](README.md) - 详细使用说明
-- [🔧 开发文档](DEVELOPMENT.md) - 开发者指南
-- [🤝 贡献指南](CONTRIBUTING.md) - 参与贡献
-- [📋 更新日志](CHANGELOG.md) - 版本历史
+- [📖 用户指南](https://github.com/linluo208/chmlFrp_docker/blob/master/README.md) - 详细使用说明
+- [🔧 开发文档](https://github.com/linluo208/chmlFrp_docker/blob/master/DEVELOPMENT.md) - 开发者指南
+- [🤝 贡献指南](https://github.com/linluo208/chmlFrp_docker/blob/master/CONTRIBUTING.md) - 参与贡献
+- [📋 更新日志](https://github.com/linluo208/chmlFrp_docker/blob/master/CHANGELOG.md) - 版本历史
 
 ## 🛠️ 技术栈
 
@@ -113,7 +113,7 @@ open http://localhost:8888
 
 ## 📄 开源协议
 
-本项目采用 [MIT License](LICENSE) 开源协议。
+本项目采用 [MIT License](https://github.com/linluo208/chmlFrp_docker/blob/master/LICENSE) 开源协议。
 
 ## 🙏 致谢
 
