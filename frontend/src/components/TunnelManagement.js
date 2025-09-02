@@ -312,22 +312,32 @@ const TunnelManagement = () => {
 
   const handleDelete = async (tunnelId) => {
     try {
+      // 乐观更新：先从UI中移除隧道
+      const originalTunnels = [...tunnels];
+      setTunnels(tunnels.filter(tunnel => tunnel.id !== tunnelId));
+      
       // 根据API文档，delete_tunnel使用查询参数传递tunnelid和token
       const response = await axios.post(`/delete_tunnel?tunnelid=${tunnelId}`);
       if (response.data.code === 200) {
         message.success('删除成功');
-        loadTunnels();
         
         // 如果删除的隧道正在运行，同时停止FRP进程
         if (activeTunnelIds.has(tunnelId)) {
           await axios.post('/frp/stop-tunnel', { tunnelId });
-          loadFrpStatus();
+          await loadFrpStatus();
         }
+        
+        // 确保数据同步，重新加载隧道列表
+        await loadTunnels();
       } else {
+        // 删除失败，恢复原始数据
+        setTunnels(originalTunnels);
         message.error(response.data.msg || '删除失败');
       }
     } catch (error) {
       console.error('删除隧道失败:', error);
+      // 删除失败，恢复原始数据
+      await loadTunnels();
       message.error('删除失败');
     }
   };
