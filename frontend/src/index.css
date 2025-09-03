@@ -55,3 +55,45 @@ body[data-v="1.0.0"]::before {
   padding: 24px;
   background: #fff;
 }
+
+/* 完全修复 -ms-high-contrast 弃用警告 */
+@media (prefers-contrast: high) {
+  *,
+  *::before,
+  *::after {
+    -ms-high-contrast: none !important;
+  }
+}
+
+/* 强制禁用 -ms-high-contrast 相关样式 */
+*,
+*::before,
+*::after,
+[data-theme],
+.ant-app,
+.ant-layout,
+.ant-menu,
+.ant-btn,
+.ant-form,
+.ant-input,
+.ant-select,
+.ant-table,
+.ant-card,
+.ant-modal,
+.ant-drawer,
+.ant-notification,
+.ant-message,
+.ant-popover,
+.ant-tooltip {
+  -ms-high-contrast: none !important;
+}
+
+/* 禁用所有CSS自定义属性中可能包含high-contrast的值 */
+:root {
+  --ms-high-contrast: none !important;
+}
+
+/* 为所有Ant Design组件强制设置样式 */
+.ant-app * {
+  -ms-high-contrast: none !important;
+}

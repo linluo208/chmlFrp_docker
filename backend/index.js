@@ -20,6 +20,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 const FrpManager = require('./frp-manager');
 const FrpServer = require('./frp-server');
 
@@ -42,6 +44,99 @@ const _verify = () => {
 const frpManager = new FrpManager();
 const frpServer = new FrpServer();
 
+// 登录信息持久化
+const LOGIN_INFO_FILE = '/app/data/login_info.json';
+
+// 保存登录信息
+function saveLoginInfo(username, password, token) {
+    try {
+        const loginInfo = {
+            username,
+            password,
+            token,
+            timestamp: Date.now() // 保存时间戳用于检查token是否过期
+        };
+        
+        // 确保data目录存在
+        const dataDir = '/app/data';
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(LOGIN_INFO_FILE, JSON.stringify(loginInfo, null, 2));
+        console.log('登录信息已保存');
+    } catch (error) {
+        console.error('保存登录信息失败:', error);
+    }
+}
+
+// 加载登录信息
+function loadLoginInfo() {
+    try {
+        if (fs.existsSync(LOGIN_INFO_FILE)) {
+            const data = fs.readFileSync(LOGIN_INFO_FILE, 'utf8');
+            const loginInfo = JSON.parse(data);
+            
+            // 检查token是否过期（7天）或手动重置
+            const tokenAge = Date.now() - (loginInfo.timestamp || 0);
+            const maxAge = 7 * 24 * 60 * 60 * 1000; // 7天
+            
+            if (tokenAge < maxAge || !loginInfo.timestamp) {
+                console.log('加载已保存的登录信息:', loginInfo.username);
+                return loginInfo;
+            } else {
+                console.log('保存的token已过期，需要重新登录');
+                // 删除过期的文件
+                fs.unlinkSync(LOGIN_INFO_FILE);
+                return null;
+            }
+        }
+    } catch (error) {
+        console.error('加载登录信息失败:', error);
+    }
+    return null;
+}
+
+// 自动登录函数
+async function autoLogin() {
+    const savedLogin = loadLoginInfo();
+    if (savedLogin) {
+        try {
+            // 验证token是否仍然有效
+            const response = await axios.get(`${CHMLFRP_API_BASE}/userinfo`, {
+                params: {
+                    token: savedLogin.token
+                }
+            });
+            
+            if (response.data && response.data.code === 200) {
+                console.log('✅ 自动登录成功:', savedLogin.username);
+                // 将token设置到全局变量或其他地方供后续使用
+                global.currentUserToken = savedLogin.token;
+                global.currentUsername = savedLogin.username;
+                return savedLogin;
+            } else {
+                console.log('❌ 自动登录失败，token可能已被重置，API返回:', response.data);
+                // token无效，删除保存的登录信息
+                try {
+                    if (fs.existsSync(LOGIN_INFO_FILE)) {
+                        fs.unlinkSync(LOGIN_INFO_FILE);
+                        console.log('已删除无效的登录信息文件');
+                    }
+                } catch (deleteError) {
+                    console.warn('删除登录信息文件失败:', deleteError.message);
+                }
+            }
+        } catch (error) {
+            console.log('❌ 自动登录失败，网络错误:', error.message);
+            // 不删除登录信息，可能只是网络问题
+        }
+    } else {
+        console.log('❌ 没有找到登录信息文件');
+    }
+    return null;
+}
+
 // 中间件配置
 app.use(cors());
 app.use(bodyParser.json());
@@ -49,6 +144,51 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ChmlFrp API基础URL（可以通过环境变量配置）
 const CHMLFRP_API_BASE = process.env.CHMLFRP_API_BASE || 'http://cf-v2.uapis.cn';
+
+// 通用API代理函数（返回数据）
+async function proxyToChmlFrpAsync(req, endpoint, method = 'GET') {
+    try {
+        const config = {
+            method: method,
+            url: `${CHMLFRP_API_BASE}${endpoint}`,
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'ChmlFrp-Docker-Dashboard/1.0'
+            },
+            timeout: 15000
+        };
+
+        // 添加请求参数
+        if (method === 'GET') {
+            config.params = req.query;
+        } else {
+            config.data = req.body;
+        }
+
+        // 获取token - 优先使用请求头中的token，其次使用全局保存的token
+        let token = null;
+        if (req.headers.authorization) {
+            token = req.headers.authorization.replace('Bearer ', '');
+        } else if (global.currentUserToken) {
+            token = global.currentUserToken;
+        }
+        
+        // 如果有token，添加到请求参数中
+        if (token) {
+            if (method === 'GET') {
+                config.params = { ...config.params, token: token };
+            } else {
+                config.data = { ...config.data, token: token };
+            }
+        }
+
+        const response = await axios(config);
+        return response.data;
+    } catch (error) {
+        console.error('代理请求失败:', error.message);
+        throw error;
+    }
+}
 
 // 通用API代理函数
 async function proxyToChmlFrp(req, res, endpoint, method = 'GET', retryCount = 0) {
@@ -73,9 +213,16 @@ async function proxyToChmlFrp(req, res, endpoint, method = 'GET', retryCount = 0
             config.data = req.body;
         }
 
-        // 如果有token，添加到请求参数中（ChmlFrp使用query参数传token）
+        // 获取token - 优先使用请求头中的token，其次使用全局保存的token
+        let token = null;
         if (req.headers.authorization) {
-            const token = req.headers.authorization.replace('Bearer ', '');
+            token = req.headers.authorization.replace('Bearer ', '');
+        } else if (global.currentUserToken) {
+            token = global.currentUserToken;
+        }
+        
+        // 如果有token，添加到请求参数中（ChmlFrp使用query参数传token）
+        if (token) {
             if (method === 'GET') {
                 config.params = { ...config.params, token: token };
             } else {
@@ -159,10 +306,145 @@ async function proxyToChmlFrp(req, res, endpoint, method = 'GET', retryCount = 0
 // API路由定义
 
 // 1. 用户认证相关
-app.get('/api/login', (req, res) => proxyToChmlFrp(req, res, '/login'));
+// 自定义登录处理器，支持登录信息保存
+app.get('/api/login', async (req, res) => {
+    try {
+        // 首先调用原始的登录API
+        const response = await axios.get(`${CHMLFRP_API_BASE}/login`, {
+            params: req.query,
+            headers: {
+                'User-Agent': 'ChmlFrp-Docker/1.0.0',
+                'Accept': 'application/json'
+            }
+        });
+        
+        // 如果登录成功，保存登录信息
+        if (response.data && response.data.code === 200 && response.data.data) {
+            const { username, password } = req.query;
+            // ChmlFrp API 使用 usertoken 字段
+            const token = response.data.data.usertoken || response.data.data.token;
+            
+            console.log('登录响应数据:', JSON.stringify(response.data, null, 2));
+            console.log('提取的token:', token);
+            
+            if (token) {
+                // 保存登录信息以供重启后使用
+                saveLoginInfo(username, password, token);
+                
+                // 设置全局token
+                global.currentUserToken = token;
+                global.currentUsername = username;
+                
+                console.log(`用户 ${username} 登录成功，登录信息已保存`);
+            } else {
+                console.log('警告: 登录成功但未找到token字段');
+            }
+        }
+        
+        res.json(response.data);
+    } catch (error) {
+        console.error('登录处理失败:', error.message);
+        res.status(500).json({
+            code: -1,
+            state: "error",
+            msg: "登录处理失败",
+            data: null
+        });
+    }
+});
 app.get('/api/register', (req, res) => proxyToChmlFrp(req, res, '/register')); // 修复：与官方API一致使用GET
 app.post('/api/sendmailcode', (req, res) => proxyToChmlFrp(req, res, '/sendmailcode', 'POST')); // 修复：与官方API一致使用POST
 app.get('/api/userinfo', (req, res) => proxyToChmlFrp(req, res, '/userinfo'));
+
+// 检查登录状态API
+app.get('/api/check_login_status', (req, res) => {
+    if (global.currentUserToken && global.currentUsername) {
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '已登录',
+            data: {
+                isLoggedIn: true,
+                username: global.currentUsername,
+                hasAutoLogin: true
+            }
+        });
+    } else {
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '未登录',
+            data: {
+                isLoggedIn: false,
+                username: null,
+                hasAutoLogin: false
+            }
+        });
+    }
+});
+
+// Token登录API - 允许用户直接使用token登录
+app.post('/api/login_with_token', async (req, res) => {
+    try {
+        const { username, token } = req.body;
+        
+        if (!username || !token) {
+            return res.status(400).json({
+                code: -1,
+                state: 'error',
+                msg: '用户名和token不能为空',
+                data: null
+            });
+        }
+        
+        console.log(`尝试使用token登录: ${username}`);
+        
+        // 验证token是否有效
+        const response = await axios.get(`${CHMLFRP_API_BASE}/userinfo`, {
+            params: { token },
+            headers: {
+                'User-Agent': 'ChmlFrp-Docker/1.0.0',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (response.data && response.data.code === 200) {
+            // Token有效，保存登录信息
+            saveLoginInfo(username, '', token); // 密码留空
+            
+            // 设置全局token
+            global.currentUserToken = token;
+            global.currentUsername = username;
+            
+            console.log(`Token登录成功: ${username}`);
+            
+            res.json({
+                code: 200,
+                state: 'success',
+                msg: 'Token登录成功',
+                data: {
+                    usertoken: token,
+                    username: username
+                }
+            });
+        } else {
+            res.status(401).json({
+                code: -1,
+                state: 'error',
+                msg: 'Token无效或已过期',
+                data: null
+            });
+        }
+    } catch (error) {
+        console.error('Token登录失败:', error.message);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: 'Token登录失败',
+            data: null
+        });
+    }
+});
 app.get('/api/retoken', (req, res) => proxyToChmlFrp(req, res, '/retoken'));
 app.post('/api/qiandao', (req, res) => proxyToChmlFrp(req, res, '/qiandao', 'POST'));
 app.get('/api/reset_password', (req, res) => proxyToChmlFrp(req, res, '/reset_password')); // 修复：与官方API一致使用GET
@@ -181,7 +463,43 @@ app.get('/api/delete_account', (req, res) => proxyToChmlFrp(req, res, '/delete_a
 app.post('/api/email_reset_password', (req, res) => proxyToChmlFrp(req, res, '/email_reset_password', 'POST'));
 
 // 4. 隧道管理
-app.get('/api/tunnel', (req, res) => proxyToChmlFrp(req, res, '/tunnel'));
+app.get('/api/tunnel', async (req, res) => {
+    try {
+        // 先代理请求获取隧道列表
+        const response = await proxyToChmlFrpAsync(req, '/tunnel');
+        
+        // 如果成功获取到隧道列表，检查自启动
+        if (response.code === 200 && response.data && Array.isArray(response.data)) {
+            const tunnels = response.data;
+            // 优先使用请求中的token，如果没有则使用全局token
+            const userToken = req.query.token || req.headers.authorization || global.currentUserToken;
+            
+            // 异步检查自启动，不阻塞响应
+            if (userToken && tunnels.length > 0) {
+                setImmediate(async () => {
+                    try {
+                        for (const tunnel of tunnels) {
+                            await frpManager.startAutostartTunnelWithInfo(tunnel, userToken);
+                        }
+                    } catch (error) {
+                        console.error('检查自启动隧道失败:', error);
+                    }
+                });
+            }
+        }
+        
+        // 返回原始响应
+        res.json(response);
+    } catch (error) {
+        console.error('获取隧道列表失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: '获取隧道列表失败',
+            data: null
+        });
+    }
+});
 app.post('/api/create_tunnel', (req, res) => proxyToChmlFrp(req, res, '/create_tunnel', 'POST'));
 // 删除隧道需要特殊处理：POST请求但参数通过查询参数传递
 app.post('/api/delete_tunnel', async (req, res) => {
@@ -421,14 +739,72 @@ app.post('/api/frp/stop', (req, res) => {
     });
 });
 
-// 重启FRP客户端 (已弃用，现在使用单隧道管理)
-app.post('/api/frp/restart', (req, res) => {
-    res.json({
-        code: -1,
-        state: 'error',
-        msg: '此接口已弃用，请使用隧道管理页面重新启用隧道',
-        data: null
-    });
+// 重启FRP客户端
+app.post('/api/frp/restart', async (req, res) => {
+    try {
+        console.log('重启FRP客户端请求');
+        
+        // 获取当前活跃隧道信息（在停止之前）
+        const activeTunnels = frpManager.getActiveTunnels();
+        console.log(`当前有 ${activeTunnels.length} 个活跃隧道`);
+        
+        // 停止所有隧道
+        const stopResult = await frpManager.stopAllTunnels();
+        console.log('停止隧道结果:', stopResult);
+        
+        // 等待一秒让进程完全停止
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: `FRP客户端重启成功，已停止 ${activeTunnels.length} 个隧道。请手动重新启用需要的隧道。`,
+            data: { 
+                stoppedCount: activeTunnels.length,
+                message: '隧道已全部停止，请在隧道管理页面重新启用需要的隧道'
+            }
+        });
+    } catch (error) {
+        console.error('重启FRP客户端失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: `重启FRP客户端失败: ${error.message}`,
+            data: null
+        });
+    }
+});
+
+// 清理FRP日志
+app.post('/api/frp/clear-logs', async (req, res) => {
+    try {
+        console.log('清理FRP日志请求');
+        const result = await frpManager.clearLogs();
+        
+        if (result.success) {
+            res.json({
+                code: 200,
+                state: 'success',
+                msg: result.message,
+                data: null
+            });
+        } else {
+            res.status(500).json({
+                code: -1,
+                state: 'error',
+                msg: result.message,
+                data: null
+            });
+        }
+    } catch (error) {
+        console.error('清理FRP日志失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: `清理FRP日志失败: ${error.message}`,
+            data: null
+        });
+    }
 });
 
 // 更新隧道配置
@@ -436,6 +812,17 @@ app.post('/api/frp/update-tunnels', async (req, res) => {
     try {
         const { tunnels, userToken } = req.body;
         const result = await frpManager.updateTunnels(tunnels, userToken);
+        
+        // 检查并启动自启动隧道
+        if (result.success && tunnels && Array.isArray(tunnels)) {
+            for (const tunnel of tunnels) {
+                try {
+                    await frpManager.startAutostartTunnelWithInfo(tunnel, userToken);
+                } catch (error) {
+                    console.error(`检查自启动隧道失败 ${tunnel.id}:`, error);
+                }
+            }
+        }
         
         if (result.success) {
             res.json({
@@ -575,7 +962,7 @@ app.post('/api/frp/clear-state', (req, res) => {
 // 获取隧道恢复状态
 app.get('/api/frp/recovery-status', (req, res) => {
     try {
-        const fs = require('fs');
+
         const stateFile = '/app/tunnel-state.json';
         
         let recoveryInfo = {
@@ -1140,6 +1527,117 @@ app.post('/api/reset_token', async (req, res) => {
     }
 });
 
+// 自启动配置管理
+const AUTOSTART_CONFIG_FILE = path.join(__dirname, 'data', 'autostart.json');
+
+// 确保数据目录存在
+const ensureDataDirectory = () => {
+    const dataDir = path.dirname(AUTOSTART_CONFIG_FILE);
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+};
+
+// 读取自启动配置
+const loadAutostartConfig = () => {
+    try {
+        ensureDataDirectory();
+        if (fs.existsSync(AUTOSTART_CONFIG_FILE)) {
+            const data = fs.readFileSync(AUTOSTART_CONFIG_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+        return [];
+    } catch (error) {
+        console.error('读取自启动配置失败:', error);
+        return [];
+    }
+};
+
+// 保存自启动配置
+const saveAutostartConfig = (autostartTunnels) => {
+    try {
+        ensureDataDirectory();
+        fs.writeFileSync(AUTOSTART_CONFIG_FILE, JSON.stringify(autostartTunnels, null, 2));
+        return true;
+    } catch (error) {
+        console.error('保存自启动配置失败:', error);
+        return false;
+    }
+};
+
+// 获取自启动配置
+app.get('/api/frp/autostart-config', (req, res) => {
+    try {
+        const autostartTunnels = loadAutostartConfig();
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '获取成功',
+            data: autostartTunnels
+        });
+    } catch (error) {
+        console.error('获取自启动配置失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: '获取自启动配置失败',
+            data: null
+        });
+    }
+});
+
+// 设置隧道自启动
+app.post('/api/frp/set-autostart', (req, res) => {
+    try {
+        const { tunnelId, autostart } = req.body;
+        
+        if (!tunnelId) {
+            return res.status(400).json({
+                code: -1,
+                state: 'error',
+                msg: '缺少隧道ID',
+                data: null
+            });
+        }
+        
+        let autostartTunnels = loadAutostartConfig();
+        
+        if (autostart) {
+            // 添加到自启动列表
+            if (!autostartTunnels.includes(tunnelId)) {
+                autostartTunnels.push(tunnelId);
+            }
+        } else {
+            // 从自启动列表移除
+            autostartTunnels = autostartTunnels.filter(id => id !== tunnelId);
+        }
+        
+        if (saveAutostartConfig(autostartTunnels)) {
+            res.json({
+                code: 200,
+                state: 'success',
+                msg: autostart ? '已设置开机自启' : '已取消开机自启',
+                data: { tunnelId, autostart }
+            });
+        } else {
+            res.status(500).json({
+                code: -1,
+                state: 'error',
+                msg: '保存配置失败',
+                data: null
+            });
+        }
+    } catch (error) {
+        console.error('设置自启动失败:', error);
+        res.status(500).json({
+            code: -1,
+            state: 'error',
+            msg: '设置自启动失败',
+            data: null
+        });
+    }
+});
+
 // 错误处理中间件
 app.use((err, req, res, next) => {
     console.error('服务器错误:', err);
@@ -1161,7 +1659,7 @@ app.use((req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`\n🚀 ChmlFrp Docker管理面板后端服务启动成功！`);
     console.log(`📍 API服务地址: http://localhost:${PORT}`);
     console.log(`🔗 ChmlFrp API代理: ${CHMLFRP_API_BASE}`);
@@ -1173,5 +1671,19 @@ app.listen(PORT, () => {
     console.log(`   - ✅ 断线重连`);
     console.log(`   - ✅ DNS配置`);
     console.log(`   - ✅ 实时监控`);
+    console.log(`   - ✅ 自动登录`);
     console.log(`\n========================\n`);
+    
+    // 尝试自动登录
+    setTimeout(async () => {
+        console.log('🔐 尝试自动登录...');
+        const loginResult = await autoLogin();
+        if (loginResult) {
+            console.log(`✅ 自动登录成功: ${loginResult.username}`);
+            console.log('🚀 自启动隧道将在获取隧道列表后开始...');
+        } else {
+            console.log('❌ 自动登录失败，请手动登录');
+            console.log('💡 提示：首次使用或token过期时需要手动登录一次');
+        }
+    }, 2000); // 延迟2秒执行，确保服务完全启动
 });

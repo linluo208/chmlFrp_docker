@@ -33,7 +33,10 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  FileTextOutlined,
+  RedoOutlined,
+  ClearOutlined
 } from '@ant-design/icons';
 import axios from '../utils/auth';
 
@@ -50,16 +53,28 @@ const TunnelManagement = () => {
   const [frpStatus, setFrpStatus] = useState(null);
   const [activeTunnelIds, setActiveTunnelIds] = useState(new Set());
   
+  // FRP日志和重启相关状态
+  const [logModalVisible, setLogModalVisible] = useState(false);
+  const [frpLogs, setFrpLogs] = useState('');
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [restartLoading, setRestartLoading] = useState(false);
+  const [clearLogsLoading, setClearLogsLoading] = useState(false);
+  
   // 域名相关状态
   const [freeSubdomains, setFreeSubdomains] = useState([]);
   const [customDomains, setCustomDomains] = useState([]);
   const [domainsLoading, setDomainsLoading] = useState(false);
   const [domainsLoaded, setDomainsLoaded] = useState(false);
+  
+  // 自启动相关状态
+  const [autostartTunnels, setAutostartTunnels] = useState(new Set());
+  const [autostartLoading, setAutostartLoading] = useState(null);
 
   useEffect(() => {
     loadTunnels();
     loadNodes();
     loadFrpStatus();
+    loadAutostartConfig();
     
     // 每30秒刷新FRP状态
     const interval = setInterval(loadFrpStatus, 30000);
@@ -238,6 +253,48 @@ const TunnelManagement = () => {
     }
   };
 
+  // 加载自启动配置
+  const loadAutostartConfig = async () => {
+    try {
+      const response = await axios.get('/frp/autostart-config');
+      if (response.data.code === 200) {
+        const autostartIds = response.data.data || [];
+        setAutostartTunnels(new Set(autostartIds));
+      }
+    } catch (error) {
+      console.error('加载自启动配置失败:', error);
+    }
+  };
+
+  // 处理自启动开关切换
+  const handleAutostartToggle = async (tunnelId, checked) => {
+    setAutostartLoading(tunnelId);
+    try {
+      const response = await axios.post('/frp/set-autostart', {
+        tunnelId,
+        autostart: checked
+      });
+      
+      if (response.data.code === 200) {
+        const newAutostartTunnels = new Set(autostartTunnels);
+        if (checked) {
+          newAutostartTunnels.add(tunnelId);
+        } else {
+          newAutostartTunnels.delete(tunnelId);
+        }
+        setAutostartTunnels(newAutostartTunnels);
+        message.success(checked ? '已设置开机自启' : '已取消开机自启');
+      } else {
+        message.error(response.data.msg || '设置失败');
+      }
+    } catch (error) {
+      console.error('设置自启动失败:', error);
+      message.error('设置失败');
+    } finally {
+      setAutostartLoading(null);
+    }
+  };
+
   // 移除自动同步逻辑，启用/停用直接触发单隧道FRP
 
   const toggleTunnelState = async (tunnelId) => {
@@ -284,6 +341,66 @@ const TunnelManagement = () => {
       message.destroy();
       console.error('操作失败:', error);
       message.error('操作失败，请检查网络连接');
+    }
+  };
+
+  // 获取FRP日志
+  const handleShowLogs = async () => {
+    setLogModalVisible(true);
+    setLogsLoading(true);
+    try {
+      const response = await axios.get('/frp/logs?lines=100');
+      if (response.data.code === 200) {
+        setFrpLogs(response.data.data.logs || '暂无日志');
+      } else {
+        setFrpLogs(`获取日志失败: ${response.data.msg}`);
+      }
+    } catch (error) {
+      console.error('获取FRP日志失败:', error);
+      setFrpLogs('获取日志失败，请检查网络连接');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  // 重启FRP客户端
+  const handleRestartFrp = async () => {
+    setRestartLoading(true);
+    try {
+      const response = await axios.post('/frp/restart');
+      if (response.data.code === 200) {
+        message.success(response.data.msg);
+        // 重新加载状态
+        await loadFrpStatus();
+        await loadTunnels();
+      } else {
+        message.error(`重启失败: ${response.data.msg}`);
+      }
+    } catch (error) {
+      console.error('重启FRP失败:', error);
+      message.error('重启失败，请检查网络连接');
+    } finally {
+      setRestartLoading(false);
+    }
+  };
+
+  // 清理FRP日志
+  const handleClearLogs = async () => {
+    setClearLogsLoading(true);
+    try {
+      const response = await axios.post('/frp/clear-logs');
+      if (response.data.code === 200) {
+        message.success(response.data.msg);
+        // 清理后重新获取日志
+        await handleShowLogs();
+      } else {
+        message.error(`清理失败: ${response.data.msg}`);
+      }
+    } catch (error) {
+      console.error('清理FRP日志失败:', error);
+      message.error('清理失败，请检查网络连接');
+    } finally {
+      setClearLogsLoading(false);
     }
   };
 
@@ -713,6 +830,18 @@ const TunnelManagement = () => {
       render: (conns) => conns || 0
     },
     {
+      title: '开机自启',
+      key: 'autostart',
+      render: (_, record) => (
+        <Switch
+          checked={autostartTunnels.has(record.id)}
+          loading={autostartLoading === record.id}
+          onChange={(checked) => handleAutostartToggle(record.id, checked)}
+          size="small"
+        />
+      )
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_, record) => (
@@ -771,6 +900,23 @@ const TunnelManagement = () => {
               </Space>
             </div>
             <Space>
+              <Button 
+                size="small" 
+                icon={<FileTextOutlined />}
+                onClick={handleShowLogs}
+                title="查看FRP日志"
+              >
+                日志
+              </Button>
+              <Button 
+                size="small" 
+                icon={<RedoOutlined />}
+                onClick={handleRestartFrp}
+                loading={restartLoading}
+                title="重启FRP客户端"
+              >
+                重启
+              </Button>
               <span style={{ color: '#999' }}>提示：启用/停用即实时生效</span>
             </Space>
           </div>
@@ -994,6 +1140,8 @@ const TunnelManagement = () => {
               filterOption={(input, option) =>
                 option?.label?.toLowerCase().includes(input.toLowerCase())
               }
+              dropdownStyle={{ maxHeight: '400px', overflow: 'auto' }}
+              optionLabelProp="label"
             >
               {nodes.map(node => {
                 const isOnline = node.state === 'online';
@@ -1007,16 +1155,40 @@ const TunnelManagement = () => {
                     value={node.id}
                     label={`${node.name} - ${node.area}`}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      padding: '4px 0',
+                      maxWidth: '100%',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0, marginRight: '8px' }}>
+                        <div style={{ 
+                          fontWeight: 'bold', 
+                          marginBottom: '2px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {node.name}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#666',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {node.area} • 负载: {usage}%
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '4px', 
+                        alignItems: 'center',
+                        flexShrink: 0
+                      }}>
                         <Tag 
                           color={isOnline ? 'green' : 'red'} 
                           size="small"
@@ -1052,6 +1224,54 @@ const TunnelManagement = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* FRP日志模态框 */}
+      <Modal
+        title={
+          <Space>
+            <FileTextOutlined />
+            FRP客户端日志
+          </Space>
+        }
+        open={logModalVisible}
+        onCancel={() => setLogModalVisible(false)}
+        footer={[
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={handleShowLogs} loading={logsLoading}>
+            刷新日志
+          </Button>,
+          <Button key="clear" icon={<ClearOutlined />} onClick={handleClearLogs} loading={clearLogsLoading} danger>
+            清理日志
+          </Button>,
+          <Button key="close" onClick={() => setLogModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={800}
+        style={{ top: 20 }}
+      >
+        <div style={{ 
+          backgroundColor: '#1f1f1f', 
+          color: '#ffffff', 
+          padding: '12px', 
+          borderRadius: '4px',
+          fontFamily: 'Consolas, "Courier New", monospace',
+          fontSize: '12px',
+          lineHeight: '1.4',
+          maxHeight: '500px',
+          overflowY: 'auto'
+        }}>
+          {logsLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <Spin />
+              <div style={{ marginTop: '8px', color: '#999' }}>加载日志中...</div>
+            </div>
+          ) : (
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {frpLogs || '暂无日志'}
+            </pre>
+          )}
+        </div>
       </Modal>
     </div>
   );

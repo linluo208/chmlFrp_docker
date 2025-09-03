@@ -23,10 +23,17 @@ services:
       - "7000:7000"    # FRP服务器端口
       - "7400:7400"    # FRP客户端管理端口
       - "7500:7500"    # FRP服务器管理端口
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - NODE_ENV=production
       - PORT=3001
       - CHMLFRP_API_BASE=http://cf-v2.uapis.cn
+      - TZ=Asia/Shanghai
+    volumes:
+      - frp-data:/app/data
+      - frp-logs:/app/logs
+      - frp-configs:/app/configs
     networks:
       - frp-network
 
@@ -36,3 +43,5 @@ networks:
 
 volumes:
   frp-data:
+  frp-logs:
+  frp-configs:

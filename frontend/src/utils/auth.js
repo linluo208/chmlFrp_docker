@@ -80,20 +80,31 @@ export const login = async (username, password) => {
 // Token登录函数
 export const loginWithToken = async (token) => {
   try {
-    // 临时设置token到header进行验证
-    const response = await axios.get('/userinfo', {
+    // 先验证token是否有效
+    const verifyResponse = await axios.get('/userinfo', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
     
-    if (response.data.code === 200) {
-      const userInfo = response.data.data;
+    if (verifyResponse.data.code === 200) {
+      const userInfo = verifyResponse.data.data;
+      
+      // 调用后端的token登录API来保存登录信息
+      try {
+        await axios.post('/login_with_token', {
+          username: userInfo.username,
+          token: token
+        });
+      } catch (saveError) {
+        console.warn('保存登录信息失败，但token验证成功:', saveError);
+      }
+      
       localStorage.setItem('token', token);
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      return response.data;
+      return verifyResponse.data;
     } else {
-      throw new Error(response.data.msg || 'Token登录失败');
+      throw new Error(verifyResponse.data.msg || 'Token登录失败');
     }
   } catch (error) {
     throw new Error(error.response?.data?.msg || error.message || 'Token无效或已过期');
@@ -107,6 +118,31 @@ export const checkAuth = async () => {
     return response.data.code === 200;
   } catch (error) {
     return false;
+  }
+};
+
+// 检查自动登录状态
+export const checkAutoLoginStatus = async () => {
+  try {
+    const response = await axios.get('/check_login_status');
+    if (response.data.code === 200) {
+      const { isLoggedIn, username, hasAutoLogin } = response.data.data;
+      
+      if (isLoggedIn && hasAutoLogin) {
+        // 如果后端已经自动登录，获取用户信息并设置到本地存储
+        const userInfoResponse = await axios.get('/userinfo');
+        if (userInfoResponse.data.code === 200) {
+          localStorage.setItem('userInfo', JSON.stringify(userInfoResponse.data.data));
+          // 注意：这里不设置token到localStorage，因为后端会自动处理
+          console.log(`检测到自动登录成功: ${username}`);
+          return { success: true, username, autoLogin: true };
+        }
+      }
+    }
+    return { success: false, autoLogin: false };
+  } catch (error) {
+    console.error('检查自动登录状态失败:', error);
+    return { success: false, autoLogin: false };
   }
 };
 
