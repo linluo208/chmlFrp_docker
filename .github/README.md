@@ -28,14 +28,73 @@
 
 ## 🚀 快速开始
 
+### 🐳 Docker Compose 部署（推荐）
+
 ```bash
 # 一键启动
-git clone https://github.com/your-username/chmlfrp-docker.git
-cd chmlfrp-docker
+git clone https://github.com/linluo208/chmlFrp_docker.git
+cd chmlFrp_docker
 docker-compose up -d
 
 # 访问面板
 open http://localhost:8888
+```
+
+### 📱 宝塔面板一键部署
+
+**适用于宝塔面板用户，零门槛快速部署**
+
+#### 步骤1：安装Docker
+1. 宝塔面板 → **软件商店** → 搜索 **Docker管理器** → **安装**
+
+#### 步骤2：下载镜像
+1. 访问 [GitHub Releases](https://github.com/linluo208/chmlFrp_docker/releases/tag/chmlFrp_docker)
+2. 下载 `chmlfrp-panel.tar` 镜像文件
+3. 上传到服务器任意位置
+
+#### 步骤3：导入镜像
+1. Docker管理器 → **镜像管理** → **添加本地镜像**
+2. 选择上传的 `chmlfrp-panel.tar` 文件 → **导入**
+
+#### 步骤4：创建容器
+**基础配置：**
+- 容器名称：`chmlfrp-panel`
+- 端口映射：`8888:80`（主要访问端口）
+
+**数据卷挂载：**
+```
+/www/chmlfrp/data → /app/data     (配置数据)
+/www/chmlfrp/logs → /app/logs     (日志文件)
+/www/chmlfrp/configs → /app/configs (FRP配置)
+```
+
+**环境变量：**
+```
+TZ=Asia/Shanghai
+```
+
+#### 步骤5：开放端口
+宝塔面板 → **安全** → 添加端口：`8888` (TCP)
+
+#### 步骤6：访问面板
+🎉 **部署完成！** 访问：`http://你的服务器IP:8888`
+
+**一键命令部署：**
+```bash
+# 创建数据目录
+mkdir -p /www/chmlfrp/{data,logs,configs}
+
+# 运行容器
+docker run -d \
+  --name chmlfrp-panel \
+  -p 8888:80 \
+  -p 3001:3001 \
+  -v /www/chmlfrp/data:/app/data \
+  -v /www/chmlfrp/logs:/app/logs \
+  -v /www/chmlfrp/configs:/app/configs \
+  -e TZ=Asia/Shanghai \
+  --restart unless-stopped \
+  2084738471/chmlfrp-panel:latest
 ```
 
 ## 📸 界面预览
@@ -73,10 +132,20 @@ open http://localhost:8888
 
 ## 📚 文档
 
-- [📖 用户指南](https://github.com/linluo208/chmlFrp_docker/blob/master/README.md) - 详细使用说明
-- [🔧 开发文档](https://github.com/linluo208/chmlFrp_docker/blob/master/DEVELOPMENT.md) - 开发者指南
-- [🤝 贡献指南](https://github.com/linluo208/chmlFrp_docker/blob/master/CONTRIBUTING.md) - 参与贡献
-- [📋 更新日志](https://github.com/linluo208/chmlFrp_docker/blob/master/CHANGELOG.md) - 版本历史
+### 📖 部署指南
+- [🚀 快速开始](#-快速开始) - Docker Compose 和宝塔面板部署
+- [📱 宝塔详细教程](BAOTA_DEPLOY.md) - 宝塔面板完整部署指南
+- [📖 完整用户手册](README.md) - 详细功能说明和配置
+
+### 🔧 开发文档
+- [👨‍💻 开发指南](DEVELOPMENT.md) - 本地开发环境搭建
+- [🏗️ 架构说明](ARCHITECTURE.md) - 项目架构和设计理念
+- [🤝 贡献指南](CONTRIBUTING.md) - 参与项目贡献
+
+### 📋 其他
+- [📝 更新日志](CHANGELOG.md) - 版本历史和变更记录
+- [❓ 常见问题](FAQ.md) - 问题排查和解决方案
+- [🔧 故障排除](TROUBLESHOOTING.md) - 技术支持指南
 
 ## 🛠️ 技术栈
 
