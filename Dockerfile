@@ -3,7 +3,7 @@
 # 防盗标识: linluo
 
 # ============ 前端构建阶段 ============
-FROM node:18-alpine as frontend-build
+FROM node:18-alpine AS frontend-build
 
 LABEL stage=frontend-build
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY frontend/ .
 RUN npm run build
 
 # ============ 后端准备阶段 ============
-FROM node:18-alpine as backend-build
+FROM node:18-alpine AS backend-build
 
 LABEL stage=backend-build
 WORKDIR /app
@@ -87,9 +87,23 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '' >> /usr/local/bin/start.sh && \
     echo '# 启动后端服务' >> /usr/local/bin/start.sh && \
     echo 'cd /app/backend' >> /usr/local/bin/start.sh && \
+    echo 'echo "正在启动后端服务..."' >> /usr/local/bin/start.sh && \
     echo 'node index.js &' >> /usr/local/bin/start.sh && \
+    echo 'BACKEND_PID=$!' >> /usr/local/bin/start.sh && \
+    echo '' >> /usr/local/bin/start.sh && \
+    echo '# 等待后端服务启动' >> /usr/local/bin/start.sh && \
+    echo 'echo "等待后端服务启动..."' >> /usr/local/bin/start.sh && \
+    echo 'for i in $(seq 1 30); do' >> /usr/local/bin/start.sh && \
+    echo '  if curl -f http://127.0.0.1:3001/api/health >/dev/null 2>&1; then' >> /usr/local/bin/start.sh && \
+    echo '    echo "✅ 后端服务已启动"' >> /usr/local/bin/start.sh && \
+    echo '    break' >> /usr/local/bin/start.sh && \
+    echo '  fi' >> /usr/local/bin/start.sh && \
+    echo '  echo "等待后端服务... ($i/30)"' >> /usr/local/bin/start.sh && \
+    echo '  sleep 1' >> /usr/local/bin/start.sh && \
+    echo 'done' >> /usr/local/bin/start.sh && \
     echo '' >> /usr/local/bin/start.sh && \
     echo '# 启动nginx' >> /usr/local/bin/start.sh && \
+    echo 'echo "启动nginx前端服务..."' >> /usr/local/bin/start.sh && \
     echo 'exec nginx -g "daemon off;"' >> /usr/local/bin/start.sh && \
     chmod +x /usr/local/bin/start.sh
 
