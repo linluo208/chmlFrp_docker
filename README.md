@@ -51,6 +51,228 @@ docker-compose ps
 
 默认会自动打开浏览器访问管理面板。
 
+## 📱 宝塔面板部署教程
+
+**适用于使用宝塔面板的用户，一键部署ChmlFrp管理面板**
+
+### 📋 部署步骤
+
+#### 1. 安装Docker环境
+
+**在宝塔面板中安装Docker：**
+
+1. 登录宝塔面板
+2. 进入 **软件商店**
+3. 搜索 **Docker管理器**
+4. 点击 **安装**
+5. 等待安装完成
+
+> 💡 **提示**: 如果软件商店没有Docker管理器，请在终端执行：
+> ```bash
+> curl -fsSL https://get.docker.com | sh
+> sudo systemctl start docker
+> sudo systemctl enable docker
+> ```
+
+#### 2. 下载镜像包
+
+**从GitHub获取预构建镜像：**
+
+1. 访问项目发布页面：[GitHub Releases](https://github.com/linluo208/chmlFrp_docker/releases/tag/chmlFrp_docker)
+2. 下载最新版本的镜像包：`chmlfrp-panel.tar`
+3. 将压缩包上传到服务器任意位置（建议：`/root/chmlfrp/`）
+
+> 📦 **镜像大小**: 约300MB，包含完整的前后端应用
+
+#### 3. 导入Docker镜像
+
+**在宝塔面板Docker管理中导入镜像：**
+
+1. 进入 **Docker管理器**
+2. 点击 **镜像管理** 选项卡
+3. 点击 **添加本地镜像**
+4. 选择上传的压缩包文件：`chmlfrp-panel-docker-image.tar.gz`
+5. 点击 **导入** 等待完成
+
+**命令行方式导入（可选）：**
+```bash
+# 解压并导入镜像
+cd /root/chmlfrp/
+tar -xzf chmlfrp-panel-docker-image.tar.gz
+docker load < chmlfrp-panel-docker-image.tar
+```
+
+#### 4. 创建容器
+
+**通过宝塔面板创建容器：**
+
+1. 在 **镜像管理** 中找到 `chmlfrp-panel:latest`
+2. 点击 **创建容器**
+3. 配置容器参数：
+
+**基础配置：**
+- **容器名称**: `chmlfrp-panel`
+- **内存限制**: `1GB` （推荐）
+- **CPU限制**: `1核` （推荐）
+
+**端口映射：**
+| 服务端口 | 容器端口 | 说明 |
+|----------|----------|------|
+| 8888 | 80 | Web管理面板 |
+| 3001 | 3001 | 后端API（可选） |
+| 7000 | 7000 | FRP服务端口（可选） |
+
+**存储卷挂载：**
+| 宿主机路径 | 容器路径 | 说明 |
+|------------|----------|------|
+| `/www/chmlfrp/data` | `/app/data` | 配置数据 |
+| `/www/chmlfrp/logs` | `/app/logs` | 日志文件 |
+| `/www/chmlfrp/configs` | `/app/configs` | FRP配置 |
+
+**环境变量：**
+```bash
+TZ=Asia/Shanghai
+NODE_ENV=production
+```
+
+**重启策略：**
+- 选择：`unless-stopped` （推荐）
+
+#### 5. 启动容器
+
+1. 点击 **创建** 按钮
+2. 等待容器创建完成
+3. 在 **容器管理** 中启动容器
+4. 查看容器状态确保运行正常
+
+**预期启动日志：**
+```
+🚀 启动 ChmlFrp 管理面板...
+📍 前端地址: http://localhost
+🔧 后端API: http://localhost:3001
+👨‍💻 作者: linluo
+🔒 防盗标识: linluo
+
+正在启动后端服务...
+等待后端服务启动...
+✅ 后端服务已启动
+启动nginx前端服务...
+```
+
+#### 6. 配置防火墙
+
+**开放必要端口：**
+
+1. 进入宝塔面板 **安全** 设置
+2. 添加端口规则：
+   - **端口**: `8888`
+   - **协议**: `TCP`
+   - **策略**: `允许`
+   - **备注**: `ChmlFrp管理面板`
+
+**或使用命令行：**
+```bash
+# 开放8888端口
+firewall-cmd --permanent --add-port=8888/tcp
+firewall-cmd --reload
+
+# 验证端口开放
+firewall-cmd --list-ports
+```
+
+#### 7. 访问管理面板
+
+🎉 **部署完成！**
+
+- **访问地址**: `http://您的服务器IP:8888`
+- **例如**: `http://192.168.1.100:8888`
+
+**登录方式：**
+- 使用您的ChmlFrp账号密码登录
+- 或者直接使用ChmlFrp Token登录
+
+### 🔧 管理维护
+
+#### 容器管理
+
+**通过宝塔面板：**
+- **启动容器**: Docker管理器 → 容器管理 → 启动
+- **停止容器**: Docker管理器 → 容器管理 → 停止
+- **重启容器**: Docker管理器 → 容器管理 → 重启
+- **查看日志**: Docker管理器 → 容器管理 → 日志
+
+**命令行方式：**
+```bash
+# 查看容器状态
+docker ps
+
+# 查看日志
+docker logs -f chmlfrp-panel
+
+# 重启容器
+docker restart chmlfrp-panel
+
+# 停止容器
+docker stop chmlfrp-panel
+
+# 启动容器
+docker start chmlfrp-panel
+```
+
+#### 数据备份
+
+**备份重要数据：**
+```bash
+# 创建备份目录
+mkdir -p /backup/chmlfrp/$(date +%Y%m%d)
+
+# 备份配置数据
+cp -r /www/chmlfrp/data /backup/chmlfrp/$(date +%Y%m%d)/
+cp -r /www/chmlfrp/configs /backup/chmlfrp/$(date +%Y%m%d)/
+
+# 备份日志（可选）
+cp -r /www/chmlfrp/logs /backup/chmlfrp/$(date +%Y%m%d)/
+```
+
+#### 镜像升级
+
+**升级到新版本：**
+1. 下载新版本镜像包
+2. 在Docker管理器中导入新镜像
+3. 停止当前容器
+4. 删除旧容器（保留数据卷）
+5. 使用新镜像创建容器
+6. 启动新容器
+
+### ❗ 常见问题
+
+**Q: 容器启动失败？**
+A: 检查端口是否被占用，确保8888端口没有被其他服务使用
+
+**Q: 无法访问管理面板？**
+A: 
+1. 检查防火墙是否开放8888端口
+2. 确认容器状态是否正常运行
+3. 查看容器日志排查错误
+
+**Q: 数据丢失问题？**
+A: 确保正确挂载数据卷，重要数据都存储在 `/www/chmlfrp/data` 目录
+
+**Q: 性能优化建议？**
+A: 
+- 推荐配置：2核CPU + 2GB内存
+- 定期清理日志文件
+- 使用SSD存储提升I/O性能
+
+### 📞 技术支持
+
+如果在部署过程中遇到问题：
+1. 查看[故障排除](#🐛-故障排除)章节
+2. 提交[GitHub Issues](https://github.com/your-username/chmlfrp-docker/issues)
+3. 参与[讨论区](https://github.com/your-username/chmlfrp-docker/discussions)交流
+
+---
+
 ## 🛠️ 功能特性
 
 ### 🎯 核心功能
