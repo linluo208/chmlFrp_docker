@@ -6,8 +6,13 @@ echo "🚀 启动 ChmlFrp Docker 管理面板..."
 # 设置时区
 export TZ=Asia/Shanghai
 
-# 检查并下载frp二进制文件
-if [ ! -f "/app/frpc_real" ] || [ ! -f "/app/frps_real" ]; then
+# 检查并下载frp二进制文件 (先检查持久化目录)
+if [ -f "/app/data/frpc_real" ] && [ -f "/app/data/frps_real" ]; then
+    echo "✅ 发现持久化FRP文件，直接使用"
+    cp /app/data/frpc_real /app/frpc
+    cp /app/data/frps_real /app/frps
+    chmod +x /app/frpc /app/frps
+elif [ ! -f "/app/frpc_real" ] || [ ! -f "/app/frps_real" ]; then
     echo "📥 下载FRP二进制文件..."
     
     # 尝试多个下载源
@@ -22,6 +27,9 @@ if [ ! -f "/app/frpc_real" ] || [ ! -f "/app/frps_real" ]; then
                 mv frp_0.52.3_linux_amd64/frpc /app/frpc_real
                 mv frp_0.52.3_linux_amd64/frps /app/frps_real
                 chmod +x /app/frpc_real /app/frps_real
+                # 同时保存到持久化目录
+                cp /app/frpc_real /app/data/frpc_real
+                cp /app/frps_real /app/data/frps_real
                 rm -rf frp_0.52.3_linux_amd64* frp.tar.gz
                 DOWNLOAD_SUCCESS=true
                 echo "✅ GitHub下载成功"
@@ -38,6 +46,9 @@ if [ ! -f "/app/frpc_real" ] || [ ! -f "/app/frps_real" ]; then
                 mv frp_0.52.3_linux_amd64/frpc /app/frpc_real
                 mv frp_0.52.3_linux_amd64/frps /app/frps_real
                 chmod +x /app/frpc_real /app/frps_real
+                # 同时保存到持久化目录
+                cp /app/frpc_real /app/data/frpc_real
+                cp /app/frps_real /app/data/frps_real
                 rm -rf frp_0.52.3_linux_amd64* frp.tar.gz
                 DOWNLOAD_SUCCESS=true
                 echo "✅ 备用源下载成功"
@@ -53,6 +64,9 @@ if [ ! -f "/app/frpc_real" ] || [ ! -f "/app/frps_real" ]; then
                 mv frp_0.52.3_linux_amd64/frpc /app/frpc_real
                 mv frp_0.52.3_linux_amd64/frps /app/frps_real
                 chmod +x /app/frpc_real /app/frps_real
+                # 同时保存到持久化目录
+                cp /app/frpc_real /app/data/frpc_real
+                cp /app/frps_real /app/data/frps_real
                 rm -rf frp_0.52.3_linux_amd64* frp.tar.gz
                 DOWNLOAD_SUCCESS=true
                 echo "✅ ghproxy镜像下载成功"

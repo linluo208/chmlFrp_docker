@@ -147,7 +147,16 @@ export const checkAutoLoginStatus = async () => {
 };
 
 // 登出
-export const logout = () => {
+export const logout = async () => {
+  try {
+    // 调用后端logout API，删除保存的登录信息
+    await axios.post('/logout');
+    console.log('后端登录信息已清理');
+  } catch (error) {
+    console.warn('清理后端登录信息失败:', error.message);
+  }
+  
+  // 清理前端本地存储
   localStorage.removeItem('token');
   localStorage.removeItem('userInfo');
   window.location.href = '/login';

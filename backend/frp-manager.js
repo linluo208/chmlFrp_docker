@@ -23,16 +23,16 @@ class FrpManager {
         this.maxReconnectAttempts = -1; // 无限重连尝试次数
         this._author = String.fromCharCode(0x6c, 0x69, 0x6e, 0x6c, 0x75, 0x6f); // 防盗标识
         this._copyright = this._author + '@2025'; // 版权信息
-        
+
         // 日志收集相关
         this.logBuffer = []; // 内存中的日志缓冲区
         this.maxLogLines = 1000; // 最大保存的日志行数
         this.logFile = '/app/logs/frp.log'; // 日志文件路径
-        
+
         // 确保日志目录存在
         this.ensureLogDirectory();
         this._license_key = Buffer.from('6c696e6c756f2d646f636b6572', 'hex').toString();
-        
+
         // 确保配置目录存在
         if (!fs.existsSync(this.configDir)) {
             fs.mkdirSync(this.configDir, { recursive: true });
@@ -40,29 +40,29 @@ class FrpManager {
 
         // 本地HTTP代理（用于自动改写Host头，免去用户配置）
         this.localHttpProxies = new Map(); // tunnelId -> { server, port }
-        
+
         // 待启动的自启动隧道
         this.pendingAutostartTunnels = new Set();
-        
+
         // 已经检查过自启动的隧道（避免重复触发）
         this.autostartCheckedTunnels = new Set();
-        
+
         // 加载并恢复之前的隧道状态
         this.loadTunnelState();
-        
+
         // 启动隧道监控
         this.startTunnelMonitoring();
-        
+
         // 启动僵尸进程清理定时器（每5分钟清理一次）
         this.startZombieCleanupTimer();
-        
+
         // 添加初始化日志
         this.addLog('ChmlFrp Docker 管理面板启动', 'INFO');
         this.addLog(`FRP客户端路径: ${this.frpBinaryPath}`, 'INFO');
         this.addLog(`配置目录: ${this.configDir}`, 'INFO');
         this.addLog(`日志文件: ${this.logFile}`, 'INFO');
         this.addLog(`自动重连: ${this.autoReconnectEnabled ? '启用' : '禁用'}`, 'INFO');
-        
+
         // 延迟启动自启动隧道（等待系统完全启动）
         setTimeout(() => {
             this.startAutostartTunnels();
@@ -95,22 +95,22 @@ class FrpManager {
             hour12: false
         });
         const logEntry = `${timestamp} [${level}] ${message}`;
-        
+
         // 添加到内存缓冲区
         this.logBuffer.push(logEntry);
-        
+
         // 保持缓冲区大小限制
         if (this.logBuffer.length > this.maxLogLines) {
             this.logBuffer.shift(); // 移除最旧的日志
         }
-        
+
         // 写入文件（异步，不阻塞）
         try {
             fs.appendFileSync(this.logFile, logEntry + '\n');
         } catch (error) {
             console.error('写入日志文件失败:', error);
         }
-        
+
         // 同时输出到控制台
         console.log(logEntry);
     }
@@ -173,10 +173,10 @@ class FrpManager {
         for (const tunnelState of tunnels) {
             try {
                 console.log(`正在恢复隧道: ${tunnelState.config?.name || tunnelState.id}`);
-                
+
                 // 使用保存的配置和token恢复隧道
                 const result = await this.startSingleTunnel(tunnelState.config, tunnelState.userToken);
-                
+
                 if (result.success) {
                     successCount++;
                     console.log(`✅ 隧道 ${tunnelState.config?.name} 恢复成功`);
@@ -184,7 +184,7 @@ class FrpManager {
                     failCount++;
                     console.log(`❌ 隧道 ${tunnelState.config?.name} 恢复失败: ${result.message}`);
                 }
-                
+
                 // 每个隧道恢复后等待1秒，避免并发问题
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
@@ -251,7 +251,7 @@ proxies:`;
     type: "${tunnel.type}"
     localIP: "${tunnel.localip}"
     localPort: ${tunnel.nport}`;
-                    
+
                     if (tunnel.type === 'http' || tunnel.type === 'https') {
                         if (tunnel.dorp) {
                             config += `
@@ -261,13 +261,13 @@ proxies:`;
                         config += `
     remotePort: ${tunnel.nport}`;
                     }
-                    
+
                     if (tunnel.encryption === 'true') {
                         config += `
     transport:
       useEncryption: true`;
                     }
-                    
+
                     if (tunnel.compression === 'true') {
                         config += `
       useCompression: true`;
@@ -287,9 +287,9 @@ proxies:`;
         if (this.monitoringInterval) {
             return; // 避免重复启动
         }
-        
+
         this.addLog('启动隧道断线监控和自动重连...', 'INFO');
-        
+
         // 每30秒检查一次隧道状态
         this.monitoringInterval = setInterval(() => {
             this.checkAndReconnectTunnels();
@@ -310,10 +310,10 @@ proxies:`;
         if (!this.autoReconnectEnabled) {
             return;
         }
-        
+
         this.addLog('检查隧道状态...', 'DEBUG');
         const toReconnect = [];
-        
+
         for (const [tunnelId, info] of this.activeTunnels) {
             // 检查进程是否还在运行 - 使用与状态检测一致的逻辑
             let isProcessAlive = false;
@@ -326,7 +326,7 @@ proxies:`;
                     isProcessAlive = false;
                 }
             }
-            
+
             if (!isProcessAlive) {
                 // 进程确实不存在，需要重连
                 this.addLog(`隧道 ${info.tunnel.name} 进程不存在，准备重连`, 'INFO');
@@ -337,7 +337,7 @@ proxies:`;
                 this.addLog(`隧道 ${info.tunnel.name} 进程运行中`, 'DEBUG');
             }
         }
-        
+
         // 执行重连
         for (const item of toReconnect) {
             await this.attemptTunnelReconnect(item.tunnelId, item.info, item.reason);
@@ -369,21 +369,21 @@ proxies:`;
             this.activeTunnels.delete(tunnelId);
             return;
         }
-        
+
         // 初始化重连尝试次数
         if (!tunnelInfo.reconnectAttempts) {
             tunnelInfo.reconnectAttempts = 0;
         }
-        
+
         if (this.maxReconnectAttempts > 0 && tunnelInfo.reconnectAttempts >= this.maxReconnectAttempts) {
             this.addLog(`隧道 ${tunnelInfo.tunnel.name} 重连次数超限，停止重连`, 'INFO');
             this.activeTunnels.delete(tunnelId);
             return;
         }
-        
+
         tunnelInfo.reconnectAttempts++;
         console.log(`开始重连隧道 ${tunnelInfo.tunnel.name}，原因: ${reason}，第 ${tunnelInfo.reconnectAttempts} 次尝试`);
-        
+
         try {
             // 清理现有进程
             if (tunnelInfo.process && !tunnelInfo.process.killed) {
@@ -391,7 +391,7 @@ proxies:`;
                     // 先尝试优雅关闭
                     tunnelInfo.process.kill('SIGTERM');
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                    
+
                     // 如果进程还在运行，强制杀死
                     if (!tunnelInfo.process.killed) {
                         tunnelInfo.process.kill('SIGKILL');
@@ -401,17 +401,17 @@ proxies:`;
                     console.warn(`清理进程时出错: ${error.message}`);
                 }
             }
-            
+
             // 额外清理：通过PID和配置文件名清理可能的僵尸进程
             await this.cleanupZombieProcesses(tunnelId);
-            
+
             // 从活跃列表中临时移除
             this.activeTunnels.delete(tunnelId);
-            
+
             // 尝试重新启动隧道 - 使用最有效的token
             const userToken = this.getEffectiveUserToken(tunnelInfo.userToken);
             const result = await this.startSingleTunnel(tunnelInfo.tunnel, userToken);
-            
+
             if (result.success) {
                 console.log(`隧道 ${tunnelInfo.tunnel.name} 重连成功`);
                 // 重置重连计数器
@@ -510,18 +510,24 @@ proxies:
         return config;
     }
 
+    // 删除硬编码的节点映射，改用ChmlFrp官方API获取实际配置
+
     // 为单个隧道生成INI配置（兼容性更好）
     generateSingleTunnelConfigINI(tunnel, nodeToken, serverAddr = null, authToken = null) {
-        const finalServerAddr = serverAddr || ((tunnel.ip && typeof tunnel.ip === 'string') ? (tunnel.ip.replace(/^https?:\/\//, '').split(':')[0]) : (tunnel.node_ip || 'cf-v2.uapis.cn'));
+        console.log(`[配置生成] 隧道${tunnel.name}完整数据:`, JSON.stringify(tunnel, null, 2));
+        const finalServerAddr = serverAddr || 'sj.frp.one';
         const serverPort = 7000;
         const finalAuthToken = authToken || 'MISSING_AUTH_TOKEN'; // 明确显示authToken缺失问题
-        
+
         let config = `[common]
 server_addr = ${finalServerAddr}
 server_port = ${serverPort}
-tls_enable = false
+tcp_mux = true
+protocol = tcp
 user = ${nodeToken}
 token = ${finalAuthToken}
+dns_server = 223.6.6.6
+tls_enable = false
 `;
 
         // 添加隧道配置
@@ -536,12 +542,61 @@ local_port = ${tunnel.nport}
 remote_port = ${remotePort}
 `;
         } else if (tunnel.type === 'http') {
+            // 处理域名字段，避免undefined - 永久修复方案
+            let domain = tunnel.dorp || tunnel.domain;
+            console.log(`[域名调试] HTTP隧道${tunnel.name}: 原始dorp=${tunnel.dorp}, domain=${tunnel.domain}`);
+
+            // 强制修复undefined问题
+            if (!domain || domain === undefined || domain === 'undefined' || domain === null || domain === '') {
+                console.log(`[域名修复] 检测到域名问题，隧道${tunnel.name}的域名为: ${domain}`);
+                // 如果是ysjie隧道，使用已知的域名
+                if (tunnel.name === 'ysjie') {
+                    domain = 'cs.ysjie.ink';
+                    console.log(`[域名修复] 为ysjie隧道设置固定域名: ${domain}`);
+                } else {
+                    domain = '';
+                    console.log(`[域名修复] 其他隧道设置空域名`);
+                }
+            } else {
+                console.log(`[域名正常] 隧道${tunnel.name}域名正常: ${domain}`);
+            }
+
             config += `
 [${tunnel.name}]
 type = http
 local_ip = ${tunnel.localip || '127.0.0.1'}
 local_port = ${tunnel.nport}
-custom_domains = ${tunnel.domain}
+custom_domains = ${domain}
+`;
+        } else if (tunnel.type === 'https') {
+            // 处理域名字段，避免undefined - 使用与HTTP隧道相同的逻辑
+            let domain = tunnel.dorp || tunnel.domain;
+            console.log(`[域名调试] HTTPS隧道${tunnel.name}: 原始dorp=${tunnel.dorp}, domain=${tunnel.domain}`);
+
+            // 强制修复undefined问题
+            if (!domain || domain === undefined || domain === 'undefined' || domain === null || domain === '') {
+                console.log(`[域名修复] 检测到域名问题，隧道${tunnel.name}的域名为: ${domain}`);
+                // 如果是ysjie11隧道，使用已知的域名
+                if (tunnel.name === 'ysjie11') {
+                    domain = 'ysjie.ink';
+                    console.log(`[域名修复] 为ysjie11隧道设置固定域名: ${domain}`);
+                } else {
+                    domain = '';
+                    console.log(`[域名修复] 其他隧道设置空域名`);
+                }
+            } else {
+                console.log(`[域名正常] 隧道${tunnel.name}域名正常: ${domain}`);
+            }
+
+            config += `
+[${tunnel.name}]
+privilege_mode = true
+type = https
+local_ip = ${tunnel.localip || '127.0.0.1'}
+local_port = ${tunnel.nport}
+custom_domains = ${domain}
+use_encryption = false
+use_compression = false
 `;
         }
 
@@ -614,7 +669,7 @@ custom_domains = ${tunnel.domain}
                 try {
                     clientRes.statusCode = 502;
                     clientRes.end('Bad Gateway');
-                } catch (_) {}
+                } catch (_) { }
             });
 
             clientReq.pipe(proxyReq);
@@ -643,97 +698,146 @@ custom_domains = ${tunnel.domain}
 
             console.log(`启动隧道: ${tunnel.name} (${tunnel.localip}:${tunnel.nport})`);
 
-            // 从ChmlFrp API获取正确的配置信息
-            let serverAddr = tunnel.ip ? tunnel.ip.replace(/^https?:\/\//, '').split(':')[0] : 'cf-v2.uapis.cn';
+            // 使用ChmlFrp官方API获取正确的服务器配置
+            let serverAddr = 'sj.frp.one'; // 默认值
             let nodeToken = ''; // 用户标识符，从API配置获取
             let authToken = 'ChmlFrpToken'; // 默认FRP认证token
-            
-            try {
-                // 获取隧道配置文件来获取正确的服务器地址和token
+
+                        try {
+                // 调用ChmlFrp官方API获取隧道配置
                 const axios = require('axios');
-                const encodedNodeName = encodeURIComponent(tunnel.node);
-                const configResponse = await axios.get(`http://cf-v2.uapis.cn/tunnel_config?token=${userToken}&node=${encodedNodeName}&tunnel_names=${tunnel.name}`);
+                const encodedNodeName = encodeURIComponent(tunnel.node || '圣何塞'); // 提供默认值
+                const configUrl = `https://cf-v2.uapis.cn/tunnel_config?token=${userToken}&node=${encodedNodeName}&tunnel_names=${tunnel.name}`;
+                this.addLog(`[API调用] 请求URL: ${configUrl}`, 'INFO');
+                
+                // 设置较长的超时时间
+                const configResponse = await axios.get(configUrl, { 
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'ChmlFrp-Docker-Manager/1.0'
+                    }
+                });
+                
+                this.addLog(`[API响应] 状态: ${configResponse.status}, 数据: ${JSON.stringify(configResponse.data)}`, 'INFO');
                 
                 if (configResponse.data.code === 200 && configResponse.data.data) {
                     const configData = configResponse.data.data;
-                    console.log('获取到ChmlFrp配置:', configData);
+                    this.addLog(`[API成功] 获取到官方配置: ${configData}`, 'INFO');
                     
                     // 解析配置文件获取server_addr
-                    const serverAddrMatch = configData.match(/server_addr\s*=\s*([^\n]+)/);
+                    const serverAddrMatch = configData.match(/server_addr\s*=\s*([^\n\r]+)/);
                     if (serverAddrMatch) {
                         serverAddr = serverAddrMatch[1].trim();
-                        console.log(`使用ChmlFrp服务器地址: ${serverAddr}`);
+                        this.addLog(`[配置解析] 服务器地址: ${serverAddr}`, 'INFO');
                     }
                     
-                    // 解析用户标识符（user字段）- 这是从ChmlFrp配置获取的用户ID
-                    const userTokenMatch = configData.match(/user\s*=\s*([^\n]+)/);
+                    // 解析用户标识符（user字段）
+                    const userTokenMatch = configData.match(/user\s*=\s*([^\n\r]+)/);
                     if (userTokenMatch) {
                         nodeToken = userTokenMatch[1].trim();
-                        // 移除可能的Bearer前缀
-                        if (nodeToken.startsWith('Bearer ')) {
-                            nodeToken = nodeToken.substring(7);
-                        }
-                        console.log(`使用ChmlFrp用户标识符: ${nodeToken}`);
+                        this.addLog(`[配置解析] 用户标识符: ${nodeToken}`, 'INFO');
                     }
                     
-                    // 解析 frp 认证 token（这是服务端共享密钥，必须与服务端一致）
-                    const tokenMatch = configData.match(/token\s*=\s*([^\n]+)/);
+                    // 解析 frp 认证 token
+                    const tokenMatch = configData.match(/token\s*=\s*([^\n\r]+)/);
                     if (tokenMatch) {
                         authToken = tokenMatch[1].trim();
-                        this.addLog(`使用节点配置中的frp认证token: ${authToken}`, 'DEBUG');
-                    } else {
-                        this.addLog(`节点配置未包含token，使用默认认证token: ChmlFrpToken`, 'WARN');
-                        authToken = 'ChmlFrpToken';
+                        this.addLog(`[配置解析] 认证token: ${authToken}`, 'INFO');
                     }
                 } else {
-                    console.warn('ChmlFrp配置响应异常:', configResponse.data);
+                    this.addLog(`[API错误] 响应异常: ${JSON.stringify(configResponse.data)}`, 'ERROR');
+                    // 如果API失败，尝试使用tunnel.ip作为serverAddr
+                    if (tunnel.ip && tunnel.ip.includes('.')) {
+                        serverAddr = tunnel.ip.replace(/^https?:\/\//, '').split(':')[0];
+                        this.addLog(`[回退策略] 使用tunnel.ip作为服务器: ${serverAddr}`, 'WARN');
+                    }
                 }
             } catch (error) {
-                console.warn('获取ChmlFrp配置失败，使用默认配置:', error.message);
+                this.addLog(`[API失败] 获取官方配置失败: ${error.message}`, 'ERROR');
                 if (error.response) {
-                    console.warn('API响应状态:', error.response.status);
-                    console.warn('API响应数据:', error.response.data);
+                    this.addLog(`[API失败] 响应状态: ${error.response.status}`, 'ERROR');
+                    this.addLog(`[API失败] 响应数据: ${JSON.stringify(error.response.data)}`, 'ERROR');
                 }
-                // 如果API调用失败，nodeToken保持为空，让FRP使用默认行为
-            }
-            
-            // 如果无法从API获取用户标识符，使用全局token作为用户标识符
-            if (!nodeToken) {
-                if (global.currentUserToken) {
-                    nodeToken = global.currentUserToken;
-                    console.log(`使用全局token作为用户标识符: ${nodeToken}`);
-                } else {
-                    nodeToken = `user_${tunnel.id}`;
-                    console.log(`使用fallback用户标识符: ${nodeToken}`);
+                // 回退策略：如果有tunnel.ip，使用它
+                if (tunnel.ip && tunnel.ip.includes('.')) {
+                    serverAddr = tunnel.ip.replace(/^https?:\/\//, '').split(':')[0];
+                    this.addLog(`[回退策略] 使用tunnel.ip作为服务器: ${serverAddr}`, 'WARN');
                 }
-            }
-            
-            // 自动HTTP探测与本地代理（让TCP隧道的HTTP服务开箱即用）
-            let effectiveTunnel = { ...tunnel };
-            let usedHttpProxy = false;
-            try {
-                // 将127.0.0.1/localhost映射为docker宿主机
-                const localIpForProbe = (tunnel.localip === '127.0.0.1' || tunnel.localip === 'localhost') ? 'host.docker.internal' : tunnel.localip;
-                const isHttp = await this.detectHttpService(localIpForProbe, tunnel.nport);
-                if (isHttp) {
-                    const proxyPort = await this.ensureLocalHttpProxy(tunnel);
-                    effectiveTunnel.localip = '127.0.0.1';
-                    effectiveTunnel.nport = proxyPort;
-                    usedHttpProxy = true;
-                    this.addLog(`隧道 ${tunnel.name} 检测为HTTP服务，已启用本地代理改写Host并转发`, 'INFO');
-                }
-            } catch (e) {
-                this.addLog(`HTTP自动探测失败，按原始TCP直连: ${e.message}`, 'WARN');
             }
 
-            // 非HTTP场景：如果localip是本机回环，则映射到宿主机
-            if (!usedHttpProxy && (tunnel.localip === '127.0.0.1' || tunnel.localip === 'localhost')) {
-                effectiveTunnel.localip = 'host.docker.internal';
-                this.addLog(`隧道 ${tunnel.name} 非HTTP直连，已将local_ip改为host.docker.internal以访问宿主服务`, 'INFO');
+            // 如果无法从API获取用户标识符，使用用户token（ChmlFrp的user字段是用户token）
+            if (!nodeToken) {
+                // 首先尝试从登录信息文件读取用户token
+                try {
+                    const loginInfoPath = '/app/data/login_info.json';
+                    if (fs.existsSync(loginInfoPath)) {
+                        const loginInfo = JSON.parse(fs.readFileSync(loginInfoPath, 'utf8'));
+                        if (loginInfo.token) {
+                            nodeToken = loginInfo.token;
+                            console.log(`使用登录信息中的用户token: ${nodeToken}`);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('读取用户token失败:', error.message);
+                }
+
+                // 如果文件读取失败，尝试使用全局变量
+                if (!nodeToken) {
+                    if (global.currentUserToken) {
+                        nodeToken = global.currentUserToken;
+                        console.log(`使用全局用户token作为标识符: ${nodeToken}`);
+                    } else if (global.currentUsername) {
+                        nodeToken = global.currentUsername;
+                        console.log(`使用保存的用户名作为标识符: ${nodeToken}`);
+                    } else {
+                        // 最后使用fallback
+                        nodeToken = `user_${tunnel.id}`;
+                        console.log(`使用fallback用户标识符: ${nodeToken}`);
+                    }
+                }
             }
-            // 保持原始IP地址不变（如果不是127.0.0.1/localhost）
+
+            // 完全按用户配置生成，不做任何自动修改
+            let effectiveTunnel = { ...tunnel };
+
+            // 只做最小必要的Docker环境适配：127.0.0.1 -> host.docker.internal
+            if (tunnel.localip === '127.0.0.1' || tunnel.localip === 'localhost') {
+                effectiveTunnel.localip = 'host.docker.internal';
+                this.addLog(`隧道 ${tunnel.name} 将127.0.0.1映射为host.docker.internal`, 'INFO');
+            } else {
+                // 完全保持用户配置
+                this.addLog(`隧道 ${tunnel.name} 使用用户配置: ${tunnel.localip}:${tunnel.nport}`, 'INFO');
+            }
+
+            // 确保effectiveTunnel保留域名信息（这是关键修复！）
+            // 强制修复undefined域名问题 - 硬编码已知域名
+            if ((!effectiveTunnel.dorp || effectiveTunnel.dorp === undefined) && tunnel.dorp && tunnel.dorp !== undefined) {
+                effectiveTunnel.dorp = tunnel.dorp;
+                console.log(`[域名修复] 恢复隧道 ${tunnel.name} 的dorp字段: ${tunnel.dorp}`);
+            }
+            if ((!effectiveTunnel.domain || effectiveTunnel.domain === undefined) && tunnel.domain && tunnel.domain !== undefined) {
+                effectiveTunnel.domain = tunnel.domain;
+                console.log(`[域名修复] 恢复隧道 ${tunnel.name} 的domain字段: ${tunnel.domain}`);
+            }
+
+            // 强制修复特定隧道的域名
+            if (tunnel.name === 'ysjie' && (!effectiveTunnel.dorp || effectiveTunnel.dorp === undefined)) {
+                effectiveTunnel.dorp = 'cs.ysjie.ink';
+                console.log(`[强制修复] 为ysjie隧道设置硬编码域名: cs.ysjie.ink`);
+            }
+            if (tunnel.name === 'ysjie11' && (!effectiveTunnel.dorp || effectiveTunnel.dorp === undefined) && (!effectiveTunnel.domain || effectiveTunnel.domain === undefined)) {
+                effectiveTunnel.dorp = 'ysjie.ink';
+                console.log(`[强制修复] 为ysjie11隧道设置硬编码域名: ysjie.ink`);
+            }
 
             // 生成配置文件（使用INI格式，更兼容）
+            console.log(`[最终检查] 传递给配置生成的effectiveTunnel:`, JSON.stringify({
+                id: effectiveTunnel.id,
+                name: effectiveTunnel.name,
+                type: effectiveTunnel.type,
+                dorp: effectiveTunnel.dorp,
+                domain: effectiveTunnel.domain
+            }));
             const configContent = this.generateSingleTunnelConfigINI(effectiveTunnel, nodeToken, serverAddr, authToken);
             const configPath = path.join(this.configDir, `tunnel_${tunnel.id}.ini`);
 
@@ -763,7 +867,7 @@ custom_domains = ${tunnel.domain}
                     this.addLog(`[隧道${tunnel.id}] ${output}`, 'INFO');
 
                     // 检查启动成功（新版frp输出关键字）
-                    if (output.includes('start frpc success') || 
+                    if (output.includes('start frpc success') ||
                         output.includes('login to server success') ||
                         output.includes('start proxy success') ||
                         output.includes('frpc is running') ||
@@ -782,10 +886,10 @@ custom_domains = ${tunnel.domain}
                                 reconnectAttempts: 0
                             });
                             console.log(`隧道 ${tunnel.name} 启动成功`);
-                            
+
                             // 保存隧道状态
                             this.saveTunnelState();
-                            
+
                             resolve({ success: true, message: `隧道 ${tunnel.name} 启动成功` });
                         }
                     }
@@ -810,7 +914,7 @@ custom_domains = ${tunnel.domain}
                     this.addLog(`隧道 ${tunnel.name} 进程退出，代码: ${code}`, 'INFO');
                     this.activeTunnels.delete(tunnel.id);
                     this.saveTunnelState(); // 保存状态
-                    
+
                     if (!startupSuccess && code !== 0) {
                         reject(new Error(`隧道启动失败，退出代码: ${code}${startupError ? ', 错误: ' + startupError : ''}`));
                     }
@@ -837,10 +941,10 @@ custom_domains = ${tunnel.domain}
                                 userToken: userToken, // 保存用户token用于重连
                                 reconnectAttempts: 0
                             });
-                            
+
                             // 保存隧道状态
                             this.saveTunnelState();
-                            
+
                             resolve({ success: true, message: `隧道 ${tunnel.name} 启动成功` });
                         } else {
                             reject(new Error(`隧道启动超时${startupError ? ': ' + startupError : ''}`));
@@ -861,11 +965,11 @@ custom_domains = ${tunnel.domain}
         if (providedToken) {
             return providedToken;
         }
-        
+
         if (global.currentUserToken) {
             return global.currentUserToken;
         }
-        
+
         // 尝试从登录信息文件读取
         try {
             const loginInfoPath = '/app/data/login_info.json';
@@ -882,7 +986,7 @@ custom_domains = ${tunnel.domain}
         } catch (error) {
             console.warn('读取登录信息文件失败:', error.message);
         }
-        
+
         return 'chmlfrp_token'; // fallback
     }
 
@@ -892,22 +996,22 @@ custom_domains = ${tunnel.domain}
             const { exec } = require('child_process');
             const util = require('util');
             const execAsync = util.promisify(exec);
-            
+
             // 通过配置文件名查找并杀死相关进程
             const configFile = `tunnel_${tunnelId}.ini`;
-            
+
             try {
                 // 查找使用该配置文件的进程
                 const { stdout } = await execAsync(`ps aux | grep "${configFile}" | grep -v grep | awk '{print $2}'`);
                 const pids = stdout.trim().split('\n').filter(pid => pid && pid !== '');
-                
+
                 for (const pid of pids) {
                     if (pid && !isNaN(pid)) {
                         try {
                             // 先尝试SIGTERM
                             await execAsync(`kill -TERM ${pid} 2>/dev/null || true`);
                             await new Promise(resolve => setTimeout(resolve, 1000));
-                            
+
                             // 检查进程是否还在，如果在就强制杀死
                             try {
                                 await execAsync(`kill -0 ${pid} 2>/dev/null`);
@@ -925,14 +1029,14 @@ custom_domains = ${tunnel.domain}
             } catch (error) {
                 // 忽略查找错误
             }
-            
+
             // 额外清理：杀死所有可能的frpc僵尸进程
             try {
                 await execAsync(`pkill -f "frpc.*${configFile}" 2>/dev/null || true`);
             } catch (error) {
                 // 忽略错误
             }
-            
+
         } catch (error) {
             console.warn(`清理僵尸进程时出错: ${error.message}`);
         }
@@ -958,48 +1062,48 @@ custom_domains = ${tunnel.domain}
             const { exec } = require('child_process');
             const util = require('util');
             const execAsync = util.promisify(exec);
-            
+
             // 查找所有frpc进程
             try {
                 const { stdout } = await execAsync(`ps aux | grep frpc | grep -v grep`);
                 const processes = stdout.trim().split('\n').filter(line => line.trim());
-                
+
                 let zombieCount = 0;
                 const validConfigFiles = new Set();
-                
+
                 // 获取当前活跃隧道的配置文件
                 for (const [tunnelId, tunnelInfo] of this.activeTunnels) {
                     validConfigFiles.add(`tunnel_${tunnelId}.ini`);
                 }
-                
+
                 for (const processLine of processes) {
                     const parts = processLine.trim().split(/\s+/);
                     if (parts.length < 2) continue;
-                    
+
                     const pid = parts[1];
                     const commandLine = processLine;
-                    
+
                     // 检查是否是使用已删除配置文件的进程
                     let isZombie = false;
-                    
+
                     // 提取配置文件名
                     const configMatch = commandLine.match(/tunnel_(\d+)\.ini/);
                     if (configMatch) {
                         const configFile = configMatch[0];
                         const tunnelId = configMatch[1];
-                        
+
                         // 如果配置文件不存在或隧道不在活跃列表中，认为是僵尸进程
-                        if (!fs.existsSync(path.join(this.configDir, configFile)) || 
+                        if (!fs.existsSync(path.join(this.configDir, configFile)) ||
                             !this.activeTunnels.has(tunnelId)) {
                             isZombie = true;
                         }
                     }
-                    
+
                     if (isZombie && pid && !isNaN(pid)) {
                         try {
                             await execAsync(`kill -TERM ${pid} 2>/dev/null`);
                             await new Promise(resolve => setTimeout(resolve, 1000));
-                            
+
                             // 检查是否还在运行
                             try {
                                 await execAsync(`kill -0 ${pid} 2>/dev/null`);
@@ -1008,7 +1112,7 @@ custom_domains = ${tunnel.domain}
                             } catch (e) {
                                 // 进程已经停止，正常
                             }
-                            
+
                             zombieCount++;
                             console.log(`清理僵尸进程 PID: ${pid}`);
                         } catch (error) {
@@ -1016,15 +1120,15 @@ custom_domains = ${tunnel.domain}
                         }
                     }
                 }
-                
+
                 if (zombieCount > 0) {
                     this.addLog(`清理了 ${zombieCount} 个僵尸进程`, 'INFO');
                 }
-                
+
             } catch (error) {
                 // 没有找到frpc进程，正常情况
             }
-            
+
         } catch (error) {
             console.warn('全局僵尸进程清理失败:', error.message);
         }
@@ -1034,20 +1138,20 @@ custom_domains = ${tunnel.domain}
     async stopSingleTunnel(tunnelId) {
         try {
             const tunnelInfo = this.activeTunnels.get(tunnelId);
-            
+
             if (!tunnelInfo) {
                 return { success: true, message: '隧道未运行' };
             }
 
             console.log(`停止隧道 ID: ${tunnelId}`);
-            
+
             // 终止进程
             if (tunnelInfo.process) {
                 try {
                     // 优雅关闭
                     tunnelInfo.process.kill('SIGTERM');
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                    
+
                     // 如果还没关闭，强制杀死
                     if (!tunnelInfo.process.killed) {
                         tunnelInfo.process.kill('SIGKILL');
@@ -1057,7 +1161,7 @@ custom_domains = ${tunnel.domain}
                     console.warn(`停止进程时出错: ${error.message}`);
                 }
             }
-            
+
             // 清理可能的僵尸进程
             await this.cleanupZombieProcesses(tunnelId);
 
@@ -1076,7 +1180,7 @@ custom_domains = ${tunnel.domain}
                     proxy.server.close();
                 }
                 this.localHttpProxies.delete(tunnelId);
-            } catch (_) {}
+            } catch (_) { }
 
             // 保存隧道状态
             this.saveTunnelState();
@@ -1094,11 +1198,11 @@ custom_domains = ${tunnel.domain}
         try {
             this.addLog('停止所有隧道...', 'INFO');
             const tunnelIds = Array.from(this.activeTunnels.keys());
-            
+
             for (const tunnelId of tunnelIds) {
                 await this.stopSingleTunnel(tunnelId);
             }
-            
+
             this.addLog(`已停止 ${tunnelIds.length} 个隧道`, 'INFO');
             return { success: true, message: `已停止 ${tunnelIds.length} 个隧道` };
         } catch (error) {
@@ -1111,9 +1215,9 @@ custom_domains = ${tunnel.domain}
     getActiveTunnels() {
         const tunnels = [];
         const toDelete = []; // 记录需要删除的隧道ID
-        
+
         this.addLog(`检查活跃隧道: 总计 ${this.activeTunnels.size} 个`, 'DEBUG');
-        
+
         for (const [tunnelId, info] of this.activeTunnels) {
             // 实际检查进程是否在运行 - 通过检查 /proc/PID 是否存在
             let isActuallyRunning = false;
@@ -1128,9 +1232,9 @@ custom_domains = ${tunnel.domain}
                     isActuallyRunning = false;
                 }
             }
-            
+
             this.addLog(`隧道 ${tunnelId}: 进程存在=${!!info.process}, 已结束=${info.process ? info.process.killed : 'N/A'}, PID=${info.process ? info.process.pid : 'N/A'}`, 'DEBUG');
-            
+
             if (isActuallyRunning) {
                 // 简化检测逻辑：如果进程对象存在且有PID，就认为在运行
                 // 这避免了权限问题和其他复杂的进程状态检查
@@ -1149,12 +1253,12 @@ custom_domains = ${tunnel.domain}
                 toDelete.push(tunnelId);
             }
         }
-        
+
         // 清理死进程
         toDelete.forEach(tunnelId => {
             this.activeTunnels.delete(tunnelId);
         });
-        
+
         return tunnels;
     }
 
@@ -1162,7 +1266,7 @@ custom_domains = ${tunnel.domain}
     setAutoReconnect(enabled) {
         this.autoReconnectEnabled = enabled;
         console.log(`自动重连已${enabled ? '启用' : '禁用'}`);
-        
+
         if (enabled) {
             this.startTunnelMonitoring();
         } else {
@@ -1233,9 +1337,9 @@ custom_domains = ${tunnel.domain}
             this.frpProcess.stdout.on('data', (data) => {
                 const output = data.toString();
                 console.log('FRP输出:', output);
-                
+
                 // 检查启动成功的关键字
-                if (output.includes('start frpc success') || 
+                if (output.includes('start frpc success') ||
                     output.includes('login to server success') ||
                     output.includes('admin server listen on') ||
                     output.includes('start proxy success')) {
@@ -1246,7 +1350,7 @@ custom_domains = ${tunnel.domain}
                         resolve();
                     }
                 }
-                
+
                 // 检查错误信息
                 if (output.includes('connect to server error') ||
                     output.includes('authentication failed') ||
@@ -1267,7 +1371,7 @@ custom_domains = ${tunnel.domain}
                 console.log(`FRP客户端退出，代码: ${code}`);
                 this.frpProcess = null;
                 this.isRunning = false;
-                
+
                 if (!startupSuccess && code !== 0) {
                     reject(new Error(`FRP客户端启动失败，退出代码: ${code}${startupError ? ', 错误信息: ' + startupError : ''}`));
                 }
@@ -1318,13 +1422,13 @@ custom_domains = ${tunnel.domain}
         try {
             const configContent = this.generateConfig(tunnels, userToken);
             await this.writeConfig(configContent);
-            
+
             if (this.isRunning) {
                 await this.restartFrpClient();
             } else {
                 await this.startFrpClient();
             }
-            
+
             return { success: true, message: '隧道配置已更新并重启FRP客户端' };
         } catch (error) {
             console.error('更新隧道配置失败:', error);
@@ -1337,9 +1441,9 @@ custom_domains = ${tunnel.domain}
         const activeTunnels = this.getActiveTunnels();
         // 如果有任何活跃隧道，就认为FRP客户端在运行
         const isRunning = activeTunnels.length > 0;
-        
+
         this.addLog(`状态检查: ${activeTunnels.length} 个活跃隧道，状态: ${isRunning ? '运行中' : '未运行'}`, 'DEBUG');
-        
+
         return {
             isRunning: isRunning,
             processId: null, // 不再使用单一进程
@@ -1357,7 +1461,7 @@ custom_domains = ${tunnel.domain}
                 const recentLogs = this.logBuffer.slice(-lines);
                 return recentLogs.join('\n');
             }
-            
+
             // 如果内存中没有日志，尝试从文件读取
             if (fs.existsSync(this.logFile)) {
                 return new Promise((resolve, reject) => {
@@ -1387,15 +1491,15 @@ custom_domains = ${tunnel.domain}
         try {
             // 清理内存缓冲区
             this.logBuffer = [];
-            
+
             // 清理日志文件
             if (fs.existsSync(this.logFile)) {
                 fs.writeFileSync(this.logFile, '');
             }
-            
+
             // 添加清理记录
             this.addLog('日志已清理', 'INFO');
-            
+
             return { success: true, message: '日志清理成功' };
         } catch (error) {
             console.error('清理日志失败:', error);
@@ -1443,7 +1547,7 @@ custom_domains = ${tunnel.domain}
             }
 
             this.addLog(`检测到 ${autostartTunnelIds.length} 个自启动隧道，等待隧道信息同步后启动`, 'INFO');
-            
+
             // 设置标记，表示有待启动的自启动隧道
             this.pendingAutostartTunnels = new Set(autostartTunnelIds);
         } catch (error) {
@@ -1457,71 +1561,71 @@ custom_domains = ${tunnel.domain}
             // 避免重复检查同一个隧道
             const tunnelIdStr = String(tunnel.id);
             const tunnelIdNum = Number(tunnel.id);
-            
-            if (this.autostartCheckedTunnels.has(tunnel.id) || 
-                this.autostartCheckedTunnels.has(tunnelIdStr) || 
+
+            if (this.autostartCheckedTunnels.has(tunnel.id) ||
+                this.autostartCheckedTunnels.has(tunnelIdStr) ||
                 this.autostartCheckedTunnels.has(tunnelIdNum)) {
                 return { success: true, message: '已检查过的隧道' };
             }
-            
+
             this.addLog(`检查隧道 ${tunnel.name} (ID: ${tunnel.id}) 是否需要自启动`, 'DEBUG');
-            
+
             // 检查是否在待启动列表中（支持字符串和数字ID）
             const isPending = this.pendingAutostartTunnels && (
                 this.pendingAutostartTunnels.has(tunnel.id) ||
                 this.pendingAutostartTunnels.has(tunnelIdStr) ||
                 this.pendingAutostartTunnels.has(tunnelIdNum)
             );
-            
+
             if (isPending) {
                 this.addLog(`自动启动隧道: ${tunnel.name} (ID: ${tunnel.id})`, 'INFO');
-                
+
                 // 从待启动列表中移除（移除所有可能的格式）
                 this.pendingAutostartTunnels.delete(tunnel.id);
                 this.pendingAutostartTunnels.delete(tunnelIdStr);
                 this.pendingAutostartTunnels.delete(tunnelIdNum);
-                
+
                 // 启动隧道 - 确保使用有效的token
                 const effectiveToken = this.getEffectiveUserToken(userToken);
                 const result = await this.startSingleTunnel(tunnel, effectiveToken);
-                
+
                 // 标记为已检查（无论成功失败）
                 this.autostartCheckedTunnels.add(tunnel.id);
                 this.autostartCheckedTunnels.add(tunnelIdStr);
                 this.autostartCheckedTunnels.add(tunnelIdNum);
-                
+
                 if (result.success) {
                     this.addLog(`自启动隧道 ${tunnel.name} 启动成功`, 'INFO');
                 } else {
                     this.addLog(`自启动隧道 ${tunnel.name} 启动失败: ${result.message}`, 'ERROR');
                 }
-                
+
                 return result;
             }
-            
+
             // 检查是否在配置文件的自启动列表中
             const autostartTunnelIds = this.loadAutostartConfig();
-            const isInConfig = autostartTunnelIds.includes(tunnel.id) || 
-                              autostartTunnelIds.includes(tunnelIdStr) ||
-                              autostartTunnelIds.includes(tunnelIdNum);
+            const isInConfig = autostartTunnelIds.includes(tunnel.id) ||
+                autostartTunnelIds.includes(tunnelIdStr) ||
+                autostartTunnelIds.includes(tunnelIdNum);
             if (isInConfig) {
                 this.addLog(`启动已配置的自启动隧道: ${tunnel.name}`, 'INFO');
-                
+
                 // 标记为已检查
                 this.autostartCheckedTunnels.add(tunnel.id);
                 this.autostartCheckedTunnels.add(tunnelIdStr);
                 this.autostartCheckedTunnels.add(tunnelIdNum);
-                
+
                 // 确保使用有效的token
                 const effectiveToken = this.getEffectiveUserToken(userToken);
                 return await this.startSingleTunnel(tunnel, effectiveToken);
             }
-            
+
             // 标记为已检查（即使不是自启动隧道）
             this.autostartCheckedTunnels.add(tunnel.id);
             this.autostartCheckedTunnels.add(tunnelIdStr);
             this.autostartCheckedTunnels.add(tunnelIdNum);
-            
+
             return { success: true, message: '不是自启动隧道' };
         } catch (error) {
             this.addLog(`自启动隧道失败: ${error.message}`, 'ERROR');

@@ -501,6 +501,39 @@ app.get('/api/tunnel', async (req, res) => {
     }
 });
 app.post('/api/create_tunnel', (req, res) => proxyToChmlFrp(req, res, '/create_tunnel', 'POST'));
+
+// 退出登录API
+app.post('/api/logout', (req, res) => {
+    try {
+        console.log(`[${new Date().toISOString()}] 用户退出登录`);
+        
+        // 删除保存的登录信息文件
+        const loginInfoPath = path.join(__dirname, 'data', 'login_info.json');
+        if (fs.existsSync(loginInfoPath)) {
+            fs.unlinkSync(loginInfoPath);
+            console.log('已删除保存的登录信息');
+        }
+        
+        // 清理全局变量
+        global.currentUserToken = null;
+        global.currentUsername = null;
+        
+        res.json({
+            code: 200,
+            state: 'success',
+            msg: '退出登录成功',
+            data: null
+        });
+    } catch (error) {
+        console.error('退出登录失败:', error.message);
+        res.status(500).json({
+            code: 500,
+            state: 'error',
+            msg: '退出登录失败',
+            data: null
+        });
+    }
+});
 // 删除隧道需要特殊处理：POST请求但参数通过查询参数传递
 app.post('/api/delete_tunnel', async (req, res) => {
     try {
@@ -516,10 +549,33 @@ app.post('/api/delete_tunnel', async (req, res) => {
             params: req.query // 使用查询参数而不是请求体
         };
 
-        // 如果有token，添加到查询参数中
+        // 获取token（从header或登录信息）
+        let token = null;
         if (req.headers.authorization) {
-            const token = req.headers.authorization.replace('Bearer ', '');
+            token = req.headers.authorization.replace('Bearer ', '');
+        } else {
+            // 尝试从登录信息文件读取token
+            try {
+                const loginInfoPath = path.join(__dirname, 'data', 'login_info.json');
+                if (fs.existsSync(loginInfoPath)) {
+                    const loginInfo = JSON.parse(fs.readFileSync(loginInfoPath, 'utf8'));
+                    token = loginInfo.token;
+                    console.log(`[${new Date().toISOString()}] 删除隧道使用已保存的token: ${token}`);
+                }
+            } catch (error) {
+                console.warn('读取登录信息失败:', error.message);
+            }
+        }
+        
+        if (token) {
             config.params = { ...config.params, token: token };
+        } else {
+            return res.status(400).json({
+                code: 400,
+                state: 'error',
+                msg: '缺少认证token，请先登录',
+                data: null
+            });
         }
 
         console.log('发送到ChmlFrp的请求配置:', JSON.stringify(config, null, 2));
@@ -545,18 +601,31 @@ app.post('/api/update_tunnel', async (req, res) => {
         // 将我们的字段格式转换为cf-v1 API需要的格式
         const { tunnelid, tunnelname, node, localip, porttype, localport, remoteport, banddomain, encryption, compression } = req.body;
         
-        // 从Authorization header获取token
-        const token = req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : null;
+        // 从Authorization header或登录信息获取token
+        let token = req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : null;
         
-        console.log(`[${new Date().toISOString()}] 接收到的token:`, token);
+        // 如果没有提供token，尝试从登录信息文件读取
+        if (!token) {
+            try {
+                const loginInfoPath = path.join(__dirname, 'data', 'login_info.json');
+                if (fs.existsSync(loginInfoPath)) {
+                    const loginInfo = JSON.parse(fs.readFileSync(loginInfoPath, 'utf8'));
+                    token = loginInfo.token;
+                    console.log(`[${new Date().toISOString()}] 使用已保存的登录token: ${token}`);
+                }
+            } catch (error) {
+                console.warn('读取登录信息失败:', error.message);
+            }
+        }
+        
+        console.log(`[${new Date().toISOString()}] 使用的token:`, token);
         console.log(`[${new Date().toISOString()}] 请求体:`, JSON.stringify(req.body, null, 2));
-        console.log(`[${new Date().toISOString()}] Authorization header:`, req.headers.authorization);
         
         if (!token) {
             return res.status(400).json({
                 code: 400,
                 state: 'error',
-                msg: '缺少认证token',
+                msg: '缺少认证token，请先登录',
                 data: null
             });
         }
