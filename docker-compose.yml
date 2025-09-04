@@ -11,6 +11,8 @@ services:
       - "${FRONTEND_PORT:-8888}:80"
     depends_on:
       - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - frp-network
 
