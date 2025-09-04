@@ -417,7 +417,7 @@ const TunnelManagement = () => {
     form.setFieldsValue({
       name: tunnel.name,
       type: tunnel.type,
-      localip: tunnel.localip || '127.0.0.1',
+      localip: tunnel.localip || '',
       localport: tunnel.nport,
       remoteport: (tunnel.type === 'tcp' || tunnel.type === 'udp') ? tunnel.dorp : undefined,
       banddomain: (tunnel.type === 'http' || tunnel.type === 'https') ? tunnel.dorp : undefined,
@@ -700,7 +700,7 @@ const TunnelManagement = () => {
       const base = {
         tunnelname: values.name,
         node: nodeName,
-        localip: values.localip || '127.0.0.1',
+        localip: values.localip,
         porttype: porttype,
         localport: Number(values.localport),
         encryption: false,
@@ -779,7 +779,7 @@ const TunnelManagement = () => {
     {
       title: '本地地址',
       key: 'local',
-      render: (_, record) => `${record.localip || '127.0.0.1'}:${record.nport || 'N/A'}`
+      render: (_, record) => `${record.localip || 'N/A'}:${record.nport || 'N/A'}`
     },
     {
       title: '远程地址',
@@ -1032,10 +1032,21 @@ const TunnelManagement = () => {
           <Form.Item
             name="localip"
             label="本地IP"
-            initialValue="127.0.0.1"
-            rules={[{ required: true, message: '请输入本地IP' }]}
+            rules={[{ required: true, message: '请输入本地IP地址' }]}
+            extra={
+              <div style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
+                <div>🔸 请使用192.168.x.x格式的局域网IP，切勿使用127.0.0.1</div>
+                <div>🔸 获取本机IP方法：</div>
+                <div style={{ marginLeft: '12px' }}>
+                  <div>• Windows: 运行 <code>ipconfig</code> 查看IPv4地址</div>
+                  <div>• Linux/Mac: 运行 <code>ip addr show</code> 或 <code>ifconfig</code></div>
+                  <div>• 或直接查看路由器管理界面中的设备列表</div>
+                </div>
+                <div>🔸 Docker环境推荐使用主机局域网IP地址</div>
+              </div>
+            }
           >
-            <Input placeholder="127.0.0.1" />
+            <Input placeholder="例如：192.168.1.100 (请输入您的实际局域网IP)" />
           </Form.Item>
 
           <Form.Item
