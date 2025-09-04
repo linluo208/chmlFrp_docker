@@ -97,6 +97,9 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  if curl -f http://127.0.0.1:3001/api/health >/dev/null 2>&1; then' >> /usr/local/bin/start.sh && \
     echo '    echo "✅ 后端服务已启动"' >> /usr/local/bin/start.sh && \
     echo '    break' >> /usr/local/bin/start.sh && \
+    echo '  elif curl -f http://127.0.0.1:3001/ >/dev/null 2>&1; then' >> /usr/local/bin/start.sh && \
+    echo '    echo "✅ 后端服务已启动（无health端点）"' >> /usr/local/bin/start.sh && \
+    echo '    break' >> /usr/local/bin/start.sh && \
     echo '  fi' >> /usr/local/bin/start.sh && \
     echo '  echo "等待后端服务... ($i/30)"' >> /usr/local/bin/start.sh && \
     echo '  sleep 1' >> /usr/local/bin/start.sh && \
@@ -114,8 +117,8 @@ EXPOSE 80 3001 7000 7400 7500
 VOLUME ["/app/data", "/app/configs", "/app/logs"]
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/ && curl -f http://localhost:3001/api/health || exit 1
 
 # 启动命令
 ENTRYPOINT ["/usr/local/bin/start.sh"]
